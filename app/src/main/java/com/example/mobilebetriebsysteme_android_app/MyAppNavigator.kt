@@ -26,6 +26,7 @@ fun MyAppNavigator() {
             composable("home") { HomePage() }
             composable("dualmode") { DualModePage() }
             composable("profile") { ProfilePage() }
+
         }
     }
 }
