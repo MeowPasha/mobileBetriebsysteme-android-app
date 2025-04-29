@@ -21,14 +21,9 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 MyAppNavigator()
             }
+            MapScreen(context = this)
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+

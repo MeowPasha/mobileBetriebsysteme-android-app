@@ -57,4 +57,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.navigation:navigation-compose:2.8.9")
+    implementation("org.osmdroid:osmdroid-android:6.1.14")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
 }
