@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app
+package com.example.mobilebetriebsysteme_android_app.pages
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

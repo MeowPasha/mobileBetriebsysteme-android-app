@@ -56,8 +56,11 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("androidx.navigation:navigation-compose:2.8.9")
-    implementation("org.osmdroid:osmdroid-android:6.1.14")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation(libs.androidx.navigation.compose)
+
+    implementation(libs.osmdroid.android)
+    implementation(libs.play.services.location)
+    // https://mvnrepository.com/artifact/androidx.lifecycle/lifecycle-runtime-compose
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
 
 }

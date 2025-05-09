@@ -7,6 +7,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.mobilebetriebsysteme_android_app.pages.DualModePage
+import com.example.mobilebetriebsysteme_android_app.pages.HomePage
+import com.example.mobilebetriebsysteme_android_app.pages.ProfilePage
 
 
 @Composable
@@ -25,7 +28,9 @@ fun MyAppNavigator() {
         ) {
             composable("home") { HomePage() }
             composable("dualmode") { DualModePage() }
-            composable("profile") { ProfilePage() }
+            composable("profile") { ProfilePage(
+                viewModel = TODO()
+            ) }
 
         }
     }
