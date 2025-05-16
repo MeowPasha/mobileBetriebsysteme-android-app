@@ -9,9 +9,13 @@ import com.example.mobilebetriebsysteme_android_app.pages.ProfilePage
 import com.example.mobilebetriebsysteme_android_app.viewmodel.ProfileViewModel
 
 class MainActivity : ComponentActivity() {
+
+    //Create an ViewModel
     private val viewModel: ProfileViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             MaterialTheme {
                 ProfilePage(viewModel)

@@ -1,9 +1,13 @@
 package com.example.mobilebetriebsysteme_android_app.data
 
-// This class defines the each Datatype for the each column.
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
+// This class defines the Entity that will be restored in db.
+
+@Entity(tableName = "user_profile")
 data class UserProfile(
-    val id: Long = 0,
+    @PrimaryKey val id: Long = 0,
     val name: String,
     val age: Int,
     val stepGoal: Int
