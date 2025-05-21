@@ -9,7 +9,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.mobilebetriebsysteme_android_app.pages.DualModePage
-import com.example.mobilebetriebsysteme_android_app.pages.HomePage
 import com.example.mobilebetriebsysteme_android_app.pages.ProfilePage
 import com.example.mobilebetriebsysteme_android_app.viewmodel.ProfileViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
