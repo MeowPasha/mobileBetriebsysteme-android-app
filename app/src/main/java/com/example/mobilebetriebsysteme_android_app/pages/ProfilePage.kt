@@ -13,7 +13,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ProfilePage(viewModel: ProfileViewModel) {
+    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
     // Get the profile data if there is one (Flow -> State)
     val userProfile by viewModel.profile.collectAsState()
 
@@ -82,6 +84,10 @@ fun ProfilePage(viewModel: ProfileViewModel) {
                     null
                 }
 
+                scope.launch {
+                    snackbarHostState.showSnackbar("Profile Saved!")
+                }
+
                 newProfile?.let {
                     scope.launch {
                         viewModel.saveProfile(it)
@@ -89,8 +95,10 @@ fun ProfilePage(viewModel: ProfileViewModel) {
                 }
             },
             modifier = Modifier.fillMaxWidth()
+
         ) {
             Text("Save")
         }
+        SnackbarHost(hostState = snackbarHostState)
     }
 }

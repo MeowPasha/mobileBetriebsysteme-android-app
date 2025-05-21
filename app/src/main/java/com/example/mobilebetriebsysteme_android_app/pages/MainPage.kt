@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app
+package com.example.mobilebetriebsysteme_android_app.pages
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -12,7 +12,7 @@ import org.osmdroid.views.MapView
 
 @SuppressLint("ClickableViewAccessibility")
 @Composable
-fun MapScreen(context: Context) {
+fun MainPage(context: Context) {
     // osmdroid init
     Configuration.getInstance().load(context, context.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
 
