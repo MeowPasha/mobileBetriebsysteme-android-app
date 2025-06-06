@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app.viewmodel
+package com.example.mobilebetriebsysteme_android_app.presantation.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val dao = ProfileDatabase.getDatabase(application).userProfileDao()
+    private val dao = ProfileDatabase.Companion.getDatabase(application).userProfileDao()
 
     private val _profile = MutableStateFlow<UserProfile?>(null)
     val profile: StateFlow<UserProfile?> = _profile

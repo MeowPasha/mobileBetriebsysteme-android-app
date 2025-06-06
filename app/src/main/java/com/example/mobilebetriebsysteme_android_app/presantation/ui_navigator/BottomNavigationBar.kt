@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app
+package com.example.mobilebetriebsysteme_android_app.presantation.ui_navigator
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn

@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.example.mobilebetriebsysteme_android_app"
     compileSdk = 35
+    apply(plugin="dagger.hilt.android.plugin")
 
     defaultConfig {
         applicationId = "com.example.mobilebetriebsysteme_android_app"
@@ -61,6 +62,7 @@ dependencies {
 
     implementation(libs.osmdroid.android)
     implementation(libs.play.services.location)
+
     // https://mvnrepository.com/artifact/androidx.lifecycle/lifecycle-runtime-compose
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
 
@@ -68,4 +70,11 @@ dependencies {
     kapt("androidx.room:room-compiler:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
 
+    // Hilt dependency
+    implementation("com.google.dagger:hilt-android:2.42")
+    kapt("com.google.dagger:hilt-android-compiler:2.42")
+
+    // Hilt navigation
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    kapt("androidx.hilt:hilt-compiler:1.2.0")
 }
