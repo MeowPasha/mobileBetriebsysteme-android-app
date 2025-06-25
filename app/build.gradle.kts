@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.mobilebetriebsysteme_android_app"
     compileSdk = 35
-    apply(plugin="dagger.hilt.android.plugin")
+    apply(plugin = "dagger.hilt.android.plugin")
 
     defaultConfig {
         applicationId = "com.example.mobilebetriebsysteme_android_app"
@@ -71,10 +71,27 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
 
     // Hilt dependency
-    implementation("com.google.dagger:hilt-android:2.42")
-    kapt("com.google.dagger:hilt-android-compiler:2.42")
+    implementation("com.google.dagger:hilt-android:2.55")
+    kapt("com.google.dagger:hilt-android-compiler:2.55")
 
     // Hilt navigation
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     kapt("androidx.hilt:hilt-compiler:1.2.0")
+
+    // OSMdroid core
+    implementation("org.osmdroid:osmdroid-android:6.1.16")
+
+    // OSM Bonus Pack (contains OSRMRoadManager)
+    implementation("com.github.MKergall:osmbonuspack:6.9.0")
+
+    // Needed for HTTP requests in OSM Bonus Pack
+    implementation("org.apache.httpcomponents:httpclient-android:4.3.5.1")
+    implementation("com.squareup.okhttp3:okhttp:4.9.0")
+
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
+
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.4.3")  // veya güncel sürüm
+    implementation("com.google.android.gms:play-services-base:18.2.0") // google play services
+
+
 }

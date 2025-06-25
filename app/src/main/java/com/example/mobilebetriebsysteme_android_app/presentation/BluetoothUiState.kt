@@ -1,5 +1,5 @@
-package com.example.mobilebetriebsysteme_android_app.presantation
-import com.example.mobilebetriebsysteme_android_app.bluetoothPackage.BluetoothDevice
+package com.example.mobilebetriebsysteme_android_app.presentation
+import com.example.mobilebetriebsysteme_android_app.bluetooth.BluetoothDevice
 
 data class BluetoothUiState(
 

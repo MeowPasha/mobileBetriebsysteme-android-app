@@ -1,14 +1,12 @@
-package com.example.mobilebetriebsysteme_android_app.presantation.viewmodel
+package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
 
-import androidx.compose.runtime.MutableState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.mobilebetriebsysteme_android_app.bluetoothPackage.BluetoothController
-import com.example.mobilebetriebsysteme_android_app.presantation.BluetoothUiState
+import com.example.mobilebetriebsysteme_android_app.bluetooth.BluetoothController
+import com.example.mobilebetriebsysteme_android_app.presentation.BluetoothUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject

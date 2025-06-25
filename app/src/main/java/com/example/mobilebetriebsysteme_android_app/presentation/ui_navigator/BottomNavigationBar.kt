@@ -1,7 +1,8 @@
-package com.example.mobilebetriebsysteme_android_app.presantation.ui_navigator
+package com.example.mobilebetriebsysteme_android_app.presentation.ui_navigator
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -18,19 +19,7 @@ fun BottomNavigationBar(navController: NavHostController) {
             selected = false,
             onClick = { navController.navigate("home") },
             label = { Text("Home") },
-            icon = { Icon(Icons.Default.LocationOn, contentDescription = "Home") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = { navController.navigate("dualmode") },
-            label = { Text("Dual") },
-            icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Dual Mode") }
-        )
-        NavigationBarItem(
-            selected = false,
-            onClick = { navController.navigate("profile") },
-            label = { Text("Profile") },
-            icon = { Icon(Icons.Default.Person, contentDescription = "Profile") }
+            icon = { Icon(Icons.Default.Map, contentDescription = "Home") }
         )
     }
 }

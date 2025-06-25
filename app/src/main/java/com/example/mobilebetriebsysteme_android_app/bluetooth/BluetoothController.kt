@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app.bluetoothPackage
+package com.example.mobilebetriebsysteme_android_app.bluetooth
 
 import kotlinx.coroutines.flow.StateFlow
 

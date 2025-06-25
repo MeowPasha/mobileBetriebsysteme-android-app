@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app.bluetoothPackage
+package com.example.mobilebetriebsysteme_android_app.bluetooth
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -12,8 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import javax.inject.Inject
 
-class AndroidBluetoothController(
+class AndroidBluetoothController @Inject constructor(
     private val context: Context
 ) : BluetoothController {
 
@@ -29,23 +30,24 @@ class AndroidBluetoothController(
     override val scannedDevices: StateFlow<List<BluetoothDeviceDomain>>
         get() = _scannedDevices.asStateFlow()
 
-    private val _pairedDevices= MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
+    private val _pairedDevices = MutableStateFlow<List<BluetoothDeviceDomain>>(emptyList())
     override val pairedDevices: StateFlow<List<BluetoothDeviceDomain>>
         get() = _pairedDevices.asStateFlow()
 
-    private val foundDeviceReciever = FoundDeviceReciever{ device ->
-        _scannedDevices.update {devices ->
+    private val foundDeviceReciever = FoundDeviceReciever { device ->
+        _scannedDevices.update { devices ->
             val newDevice = device.toBluetoothDeviceDomain()
-            if(newDevice in devices) devices else devices + newDevice
+            if (newDevice in devices) devices else devices + newDevice
         }
     }
+
     init {
         updatePairedDevices()
     }
 
     @SuppressLint("MissingPermission")
     override fun startDiscovery() {
-        if(!hasPermission(Manifest.permission.BLUETOOTH_SCAN)){
+        if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
             return
         }
         context.registerReceiver(
@@ -58,7 +60,7 @@ class AndroidBluetoothController(
 
     @SuppressLint("MissingPermission")
     override fun stopDiscovery() {
-        if(!hasPermission(android.Manifest.permission.BLUETOOTH_SCAN)) {
+        if (!hasPermission(android.Manifest.permission.BLUETOOTH_SCAN)) {
             return
         }
 
@@ -71,17 +73,18 @@ class AndroidBluetoothController(
 
     @SuppressLint("MissingPermission")
     private fun updatePairedDevices() {
-        if(!hasPermission(android.Manifest.permission.BLUETOOTH_CONNECT)) {
+        if (!hasPermission(android.Manifest.permission.BLUETOOTH_CONNECT)) {
             return
         }
         bluetoothAdapter
             ?.bondedDevices
             ?.map { it.toBluetoothDeviceDomain() }
             ?.also { devices ->
-                _pairedDevices.update { devices } }
+                _pairedDevices.update { devices }
+            }
     }
 
-    private fun hasPermission(permission: String): Boolean{
+    private fun hasPermission(permission: String): Boolean {
         return context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     }
 }
