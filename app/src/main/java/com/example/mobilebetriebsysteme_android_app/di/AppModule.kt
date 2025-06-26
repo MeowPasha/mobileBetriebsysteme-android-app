@@ -2,9 +2,6 @@ package com.example.mobilebetriebsysteme_android_app.di
 
 import android.app.Application
 import android.content.Context
-import com.example.mobilebetriebsysteme_android_app.bluetooth.AndroidBluetoothController
-import com.example.mobilebetriebsysteme_android_app.bluetooth.BluetoothController
-import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

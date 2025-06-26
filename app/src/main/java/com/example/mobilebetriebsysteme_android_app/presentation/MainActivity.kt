@@ -1,15 +1,17 @@
 package com.example.mobilebetriebsysteme_android_app.presentation
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.core.content.ContextCompat
-import com.example.mobilebetriebsysteme_android_app.presentation.ui_navigator.MyAppNavigator
+import androidx.navigation.compose.rememberNavController
+import com.example.mobilebetriebsysteme_android_app.presentation.ui_navigator.Screen
+import com.example.mobilebetriebsysteme_android_app.presentation.ui_navigator.AppNavGraph
 import dagger.hilt.android.AndroidEntryPoint
-import android.Manifest
-import android.content.pm.PackageManager
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -32,8 +34,9 @@ class MainActivity : ComponentActivity() {
         requestAllPermissions()
 
         setContent {
-            MaterialTheme { // Can be changed to AppTheme to personalize
-                MyAppNavigator()
+            MaterialTheme {
+                val navController = rememberNavController()
+                AppNavGraph(navController = navController)
             }
         }
     }

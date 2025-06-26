@@ -83,15 +83,18 @@ dependencies {
 
     // OSM Bonus Pack (contains OSRMRoadManager)
     implementation("com.github.MKergall:osmbonuspack:6.9.0")
-
     // Needed for HTTP requests in OSM Bonus Pack
     implementation("org.apache.httpcomponents:httpclient-android:4.3.5.1")
     implementation("com.squareup.okhttp3:okhttp:4.9.0")
 
+    //Icons
     implementation("androidx.compose.material:material-icons-extended:1.6.1")
 
-    implementation("androidx.compose.ui:ui-text-google-fonts:1.4.3")  // veya güncel sürüm
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.4.3")
     implementation("com.google.android.gms:play-services-base:18.2.0") // google play services
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
 
+    // compose nav
+    implementation("androidx.navigation:navigation-compose:2.7.7")
 
 }

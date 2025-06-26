@@ -5,20 +5,12 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.location.Location
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.ManageAccounts
-import androidx.compose.material.icons.filled.VideogameAsset
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,14 +20,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.ProfileViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.ProfileViewModelFactory
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.WalkingSessionViewModel
 import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.Dispatchers
+import com.google.android.gms.location.Priority
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.tasks.await
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -47,32 +41,17 @@ import org.osmdroid.views.overlay.Polyline
 
 @SuppressLint("MissingPermission")
 @Composable
-fun MainPage() {
+fun MainPage(navController: NavController, walkingSessionViewModel: WalkingSessionViewModel) {
     val context = LocalContext.current
 
-    // ProfilePage:
-    // ViewModelFactory instance
+    // Profile ViewModel Factory & ViewModel
     val factory = remember { ProfileViewModelFactory(context.applicationContext as Application) }
+    val profileViewModel: ProfileViewModel = viewModel(factory = factory)
 
-    // Get ViewModel with factory
-    val viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+    // WalkingSession ViewModel
+    val walkingSessionViewModel: WalkingSessionViewModel = viewModel()
 
-    var showProfile by remember { mutableStateOf(false) }
-    if (showProfile) {
-        ProfilePage(viewModel = viewModel, onClose = {showProfile == false})
-        return
-    }
-
-    // DualMode:
-    var showDualMode by remember {mutableStateOf(false)}
-    if (showDualMode) {
-        DualModePage(onClose = { showDualMode = false })
-        return
-    }
-
-    // Panel:
-    var showStatsPanel by remember { mutableStateOf(false) }
-
+    // Location permission
     var hasLocationPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(
@@ -85,14 +64,19 @@ fun MainPage() {
     var routeError by remember { mutableStateOf<String?>(null) }
     var destination by remember { mutableStateOf<GeoPoint?>(null) }
     val locationHistory = remember { mutableStateListOf<GeoPoint>() }
-
-    val berlinLocation = GeoPoint(52.52, 13.4050) // Berlin
+    val berlinLocation = GeoPoint(52.52, 13.4050) // Berlin başlangıç noktası
 
     val mapView = remember { createMapView(context) }
     var isDestinationLocked by remember { mutableStateOf(false) }
+    var lastLocation by remember { mutableStateOf<Location?>(null) }
 
     val coroutineScope = rememberCoroutineScope()
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    var isSearching by remember { mutableStateOf(false) }
+    var showStatsPanel by remember { mutableStateOf(false) }
 
+    // Get start location
     LaunchedEffect(true) {
         val location = getCurrentLocation(context)
         val startPoint = location?.let { GeoPoint(it.latitude, it.longitude) } ?: berlinLocation
@@ -100,6 +84,7 @@ fun MainPage() {
         addUserMarker(mapView, startPoint)
     }
 
+    // Map click event
     val mapEventsReceiver = remember {
         object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
@@ -122,6 +107,7 @@ fun MainPage() {
         }
     }
 
+    // Location update, walk distance and route
     LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission) {
             while (true) {
@@ -129,6 +115,19 @@ fun MainPage() {
                 location?.let {
                     val point = GeoPoint(it.latitude, it.longitude)
                     locationHistory.add(point)
+
+                    if (walkingSessionViewModel.isSessionActive.value && lastLocation != null) {
+                        val result = FloatArray(1)
+                        Location.distanceBetween(
+                            lastLocation!!.latitude, lastLocation!!.longitude,
+                            it.latitude, it.longitude,
+                            result
+                        )
+                        val distanceInMeters = result[0]
+                        walkingSessionViewModel.updateDistance(distanceInMeters)
+                    }
+                    lastLocation = it
+
                     mapView.post {
                         addUserMarker(mapView, point)
                         drawUserPath(mapView, locationHistory)
@@ -139,19 +138,21 @@ fun MainPage() {
         }
     }
 
+    // When a destination selected, start a session
     LaunchedEffect(destination) {
         destination?.let {
             mapView.post {
                 addDestinationMarker(mapView, it)
             }
+            walkingSessionViewModel.startSession()
+            isDestinationLocked = true
         }
-        isDestinationLocked = true
     }
 
     Box(Modifier.fillMaxSize()) {
         AndroidView(factory = { mapView }, modifier = Modifier.matchParentSize())
 
-        // Profile button
+        // Profile ve DualMode buttons - navigation with NavController
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -166,7 +167,7 @@ fun MainPage() {
                 modifier = Modifier.padding(12.dp)
             ) {
                 IconButton(
-                    onClick = { showProfile = true },
+                    onClick = { navController.navigate("profile") },
                     modifier = Modifier
                         .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
                 ) {
@@ -179,7 +180,7 @@ fun MainPage() {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 IconButton(
-                    onClick = { showDualMode = true },
+                    onClick = { navController.navigate("dualmode") },
                     modifier = Modifier
                         .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
                 ) {
@@ -191,7 +192,7 @@ fun MainPage() {
             }
         }
 
-
+        // Tip bar for setting a destionation
         Row(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -205,25 +206,30 @@ fun MainPage() {
         ) {
             Text(
                 text = if (isDestinationLocked)
-                    "Click lock button to unlock destination edit!"
+                    "Destination selected, to cancel the session click the x button!"
                 else
-                    "Select your destination by tapping on the map!",
+                    "Set an location on the map by clicking to start an session!",
                 color = Color.Black,
                 style = MaterialTheme.typography.bodyMedium
             )
 
-
             Spacer(modifier = Modifier.padding(horizontal = 8.dp))
 
-            IconButton(onClick = { isDestinationLocked = !isDestinationLocked }) {
+            IconButton(onClick = {
+                isDestinationLocked = !isDestinationLocked
+                if (!isDestinationLocked) {
+                    walkingSessionViewModel.stopSession()
+                }
+            }) {
                 Icon(
-                    imageVector = if (isDestinationLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                    imageVector = if (isDestinationLocked) Icons.Default.Close else Icons.Default.LockOpen,
                     contentDescription = if (isDestinationLocked) "Destination locked" else "Destination editable",
                     tint = Color.Black
                 )
             }
         }
 
+        // Error message
         routeError?.let {
             Text(
                 text = it,
@@ -232,7 +238,69 @@ fun MainPage() {
             )
         }
 
-        // 🔽 Arrow button
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
+
+        // Go to current location FAB
+        FloatingActionButton(
+            onClick = {
+                isSearching = true
+                coroutineScope.launch {
+                    try {
+                        val location = fusedLocationClient
+                            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                            .await()
+
+                        if (location != null) {
+                            val geoPoint = GeoPoint(location.latitude, location.longitude)
+                            mapView.controller.setZoom(18.0)
+                            mapView.controller.setCenter(geoPoint)
+
+                        } else {
+                            snackbarHostState.showSnackbar("Couldn't get location")
+                        }
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Error: ${e.message}")
+                    } finally {
+                        isSearching = false
+                    }
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = Color.White,
+            contentColor = Color.Black
+        ) {
+            Icon(
+                imageVector = Icons.Default.GpsFixed,
+                contentDescription = "Go to location"
+            )
+        }
+
+        if (isSearching) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+                    .clickable(enabled = false) {},
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = Color.White)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Searching for location...",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+
+        // Stats panel toggle
         if (!showStatsPanel) {
             Row(
                 modifier = Modifier
@@ -257,9 +325,7 @@ fun MainPage() {
             }
         }
 
-
-
-        // 🧾 Mini panel
+        // Stats panel
         if (showStatsPanel) {
             Box(
                 modifier = Modifier
@@ -270,7 +336,6 @@ fun MainPage() {
                     .padding(16.dp)
             ) {
                 Column(horizontalAlignment = Alignment.Start) {
-                    // Close button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -285,14 +350,15 @@ fun MainPage() {
 
                     Text("Walking Stats", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
-                    Text("Steps: 1234")
-                    Text("Duration: 45 minutes")
-                    Text("Distance: 2.5 km")
+
+                    WalkingStats(sessionViewModel = walkingSessionViewModel)
                 }
             }
         }
     }
 }
+
+// ---- Helper Functions ----
 
 private fun createMapView(context: Context): MapView {
     Configuration.getInstance().apply {
@@ -346,15 +412,26 @@ private fun drawUserPath(mapView: MapView, points: List<GeoPoint>) {
     }
 }
 
+@Composable
+fun WalkingStats(sessionViewModel: WalkingSessionViewModel) {
+    val time by sessionViewModel.sessionDurationInSeconds.collectAsState()
+    val distance by sessionViewModel.distanceInMeters.collectAsState()
+
+    Column(horizontalAlignment = Alignment.Start) {
+        Text(text = "Duration: ${time / 60} min ${time % 60} sec")
+        Text(text = "Distance: %.2f km".format(distance / 1000.0))
+    }
+}
+
 @SuppressLint("MissingPermission")
-suspend fun getCurrentLocation(context: Context): Location? = withContext(Dispatchers.Main) {
+suspend fun getCurrentLocation(context: Context): Location? {
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
     val locationRequest = com.google.android.gms.location.LocationRequest.Builder(
-        com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+        Priority.PRIORITY_HIGH_ACCURACY,
         1000L
     ).build()
 
-    suspendCancellableCoroutine<Location?> { cont ->
+    return kotlinx.coroutines.suspendCancellableCoroutine { cont ->
         val callback = object : com.google.android.gms.location.LocationCallback() {
             override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
                 if (result.locations.isNotEmpty()) {

@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase
 
 //@Database(UserProfile) defines which class should be in db.
 //In this case its UserProfile.
-@Database(entities = [UserProfile::class], version = 1)
+@Database(entities = [UserProfile::class], version = 3)
 abstract class ProfileDatabase : RoomDatabase() {
 
     abstract fun userProfileDao(): UserProfileDao
@@ -24,7 +24,7 @@ abstract class ProfileDatabase : RoomDatabase() {
                     context.applicationContext,
                     ProfileDatabase::class.java,
                     "profile_database"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }
