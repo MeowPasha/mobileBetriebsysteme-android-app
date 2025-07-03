@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app.di
+package com.example.mobilebetriebsysteme_android_app.dependencyInjection
 
 import android.app.Application
 import android.content.Context

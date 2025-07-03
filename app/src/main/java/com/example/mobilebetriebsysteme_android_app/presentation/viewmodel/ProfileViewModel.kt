@@ -3,8 +3,8 @@ package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.mobilebetriebsysteme_android_app.data.ProfileDatabase
-import com.example.mobilebetriebsysteme_android_app.data.UserProfile
+import com.example.mobilebetriebsysteme_android_app.data.profile.ProfileDatabase
+import com.example.mobilebetriebsysteme_android_app.data.profile.UserProfile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

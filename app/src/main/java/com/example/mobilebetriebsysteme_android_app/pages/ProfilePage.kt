@@ -1,24 +1,31 @@
 package com.example.mobilebetriebsysteme_android_app.pages
 
-import android.icu.lang.UCharacter
-import androidx.compose.foundation.background
+import android.app.Application
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mobilebetriebsysteme_android_app.data.profile.UserProfile
+import com.example.mobilebetriebsysteme_android_app.data.session.WalkingSessionEntity
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.ProfileViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.WalkingSessionViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.WalkingSessionViewModelFactory
 import kotlinx.coroutines.launch
 
 data class WalkingSession(val durationSeconds: Int, val distanceMeters: Float)
@@ -51,11 +58,13 @@ fun ProfilePage(
 
     val displayName = if (name.text.isNotBlank()) name.text else "User"
 
-    // get data from WalkingSessionViewModel
-    val sessionDuration by walkingSessionViewModel.sessionDurationInSeconds.collectAsState()
-    val distance by walkingSessionViewModel.distanceInMeters.collectAsState()
+    val context = LocalContext.current
+    val sessionViewModel: WalkingSessionViewModel = viewModel(
+        factory = WalkingSessionViewModelFactory(context.applicationContext as Application)
+    )
 
-    val sessions = listOf(WalkingSession(sessionDuration, distance))
+    val allSessions by sessionViewModel.allSessions.collectAsState<List<WalkingSessionEntity>, List<WalkingSessionEntity>>(initial = emptyList())
+    val scrollState = rememberScrollState()
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -64,6 +73,7 @@ fun ProfilePage(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .verticalScroll(scrollState)
                 .padding(24.dp)
         ) {
             // Üst kısım profile içeriği
@@ -173,20 +183,12 @@ fun ProfilePage(
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = "Average Speed: $avgSpeed",
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
                     onClick = {
                         val newProfile = try {
-                            com.example.mobilebetriebsysteme_android_app.data.UserProfile(
+                            UserProfile(
                                 id = 0,
                                 name = name.text,
                                 age = age.text.toInt(),
@@ -223,7 +225,6 @@ fun ProfilePage(
                 }
             }
 
-            // Burada sessions başlığı ve scrollable liste
             Spacer(modifier = Modifier.height(32.dp))
 
             Text(
@@ -233,11 +234,21 @@ fun ProfilePage(
             )
 
             LazyColumn(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .weight(1f)
             ) {
-                items(sessions) { session ->
-                    SessionItem(session)
+                items(allSessions) { session ->
+                    SessionItem(
+                        session = session,
+                        onDelete = { sessionToDelete ->
+                            scope.launch {
+                                walkingSessionViewModel.deleteSession(sessionToDelete)
+                                snackbarHostState.showSnackbar("Session deleted")
+                            }
+                        },
+                        calculateSteps = walkingSessionViewModel::calculateSteps
+                    )
                 }
             }
         }
@@ -245,7 +256,13 @@ fun ProfilePage(
 }
 
 @Composable
-fun SessionItem(session: WalkingSession) {
+fun SessionItem(
+    session: WalkingSessionEntity,
+    onDelete: (WalkingSessionEntity) -> Unit,
+    calculateSteps: (Float) -> Int
+) {
+    var showConfirmDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -254,12 +271,47 @@ fun SessionItem(session: WalkingSession) {
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(text = "Duration: ${session.durationSeconds / 60} min ${session.durationSeconds % 60} sec")
+            Column {
+                Text(text = "Duration: ${session.durationSeconds / 60} min ${session.durationSeconds % 60} sec")
+                Text(text = "Distance: %.2f km".format(session.distanceMeters / 1000))
+                Text(text = "Steps: ${calculateSteps(session.distanceMeters)}")
+                Text(text = "Date: ${java.text.SimpleDateFormat("dd.MM.yyyy HH:mm").format(java.util.Date(session.timestamp))}")
+            }
 
-            Text(text = "Distance: %.2f km".format(session.distanceMeters / 1000))
+            IconButton(onClick = { showConfirmDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Session",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
+
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text("Confirm Delete") },
+            text = { Text("Are you sure you want to delete this session?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDelete(session)
+                    showConfirmDialog = false
+                }) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialog = false }) {
+                    Text("No")
+                }
+            }
+        )
+    }
 }
+
+
 

@@ -1,13 +1,28 @@
 package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.mobilebetriebsysteme_android_app.data.session.SessionDatabase
+import com.example.mobilebetriebsysteme_android_app.data.session.WalkingSessionEntity
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.osmdroid.util.GeoPoint
 
-class WalkingSessionViewModel : ViewModel() {
+class WalkingSessionViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val sessionDao = SessionDatabase.getDatabase(application).sessionDao()
+    private val averageStepLength = 0.75f
+
+    val allSessions: Flow<List<WalkingSessionEntity>> = sessionDao.getAllSessions()
 
     private val _isSessionActive = MutableStateFlow(false)
     val isSessionActive = _isSessionActive.asStateFlow()
@@ -18,15 +33,37 @@ class WalkingSessionViewModel : ViewModel() {
     private val _distanceInMeters = MutableStateFlow(0f)
     val distanceInMeters = _distanceInMeters.asStateFlow()
 
-    fun startSession() {
+    private val _destinationPoint = MutableStateFlow<GeoPoint?>(null)
+    val destinationPoint: StateFlow<GeoPoint?> = _destinationPoint
+
+    private val _isDualModeSession = MutableStateFlow(false)
+    val isDualModeSession = _isDualModeSession.asStateFlow()
+
+    val steps: StateFlow<Int> = distanceInMeters
+        .map { distance -> (distance / averageStepLength).toInt() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    fun startSession(dualMode: Boolean = false) {
+        _isDualModeSession.value = dualMode
         _isSessionActive.value = true
         _sessionDurationInSeconds.value = 0
         _distanceInMeters.value = 0f
         startTimer()
     }
 
-    fun stopSession() {
-        _isSessionActive.value = false
+    fun stopSessionAndSave() {
+        if (_isSessionActive.value) {
+            _isSessionActive.value = false
+            viewModelScope.launch {
+                val session = WalkingSessionEntity(
+                    durationSeconds = _sessionDurationInSeconds.value,
+                    distanceMeters = _distanceInMeters.value,
+                    isDualMode = _isDualModeSession.value
+                )
+                sessionDao.insertSession(session)
+                resetSessionData()
+            }
+        }
     }
 
     private fun startTimer() {
@@ -38,7 +75,35 @@ class WalkingSessionViewModel : ViewModel() {
         }
     }
 
-    fun updateDistance(newDistance: Float) {
-        _distanceInMeters.value += newDistance
+    fun updateDistance(newDistanceInMeters: Float) {
+        if (!_isSessionActive.value) return
+
+        if (newDistanceInMeters >= 5f) {
+            _distanceInMeters.value += newDistanceInMeters
+        }
+    }
+
+    fun deleteSession(session: WalkingSessionEntity) {
+        viewModelScope.launch {
+            sessionDao.deleteSession(session)
+        }
+    }
+
+    fun calculateSteps(distanceMeters: Float): Int {
+        return (distanceMeters / averageStepLength).toInt()
+    }
+
+    fun resetSessionData() {
+        _sessionDurationInSeconds.value = 0
+        _distanceInMeters.value = 0f
+        _isDualModeSession.value = false
+    }
+
+    fun setDestination(geoPoint: GeoPoint) {
+        _destinationPoint.value = geoPoint
+    }
+
+    fun clearDestination() {
+        _destinationPoint.value = null
     }
 }

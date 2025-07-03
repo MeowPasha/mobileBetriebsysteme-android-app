@@ -1,9 +1,7 @@
-package com.example.mobilebetriebsysteme_android_app.data
+package com.example.mobilebetriebsysteme_android_app.data.profile
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-
-// This class defines the Entity that will be restored in db.
 
 @Entity(tableName = "user_profile")
 data class UserProfile(
