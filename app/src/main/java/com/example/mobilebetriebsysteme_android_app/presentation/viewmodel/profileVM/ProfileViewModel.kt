@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
+package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

@@ -38,13 +38,18 @@ class BluetoothViewModel @Inject constructor(
     private val _connectionStatus = MutableStateFlow<String?>(null)
     val connectionStatus = _connectionStatus.asStateFlow()
 
+    private val _isConnecting = MutableStateFlow(false)
+    val isConnecting = _isConnecting.asStateFlow()
+
+
     init {
         if (bluetoothController is AndroidBluetoothController) {
             bluetoothController.onConnectionResult = { success, deviceName ->
+                _isConnecting.value = false
                 _isConnected.value = success
-                val msg = if (success) "Connection successful: $deviceName" else "Connection failed"
-                _connectionStatus.value = msg
+                _connectionStatus.value = if (success) "Connection successful: $deviceName" else "Connection failed"
             }
+
         }
     }
 
@@ -60,8 +65,7 @@ class BluetoothViewModel @Inject constructor(
 
     fun connectToDevice(device: BluetoothDevice) {
         if (bluetoothController is AndroidBluetoothController) {
-            bluetoothController.connectToServer(device)
-        } else {
+            _isConnecting.value = true
             bluetoothController.connectToServer(device)
         }
     }

@@ -1,4 +1,4 @@
-package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
+package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM
 
 import android.app.Application
 import androidx.lifecycle.ViewModel

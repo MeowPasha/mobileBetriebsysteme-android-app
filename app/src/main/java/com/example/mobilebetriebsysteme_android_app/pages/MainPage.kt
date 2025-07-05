@@ -23,9 +23,9 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.ProfileViewModel
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.ProfileViewModelFactory
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.WalkingSessionViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModelFactory
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.BluetoothViewModel
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -41,12 +41,13 @@ import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 
+
 @SuppressLint("MissingPermission")
 @Composable
 fun MainPage(
     navController: NavController,
     walkingSessionViewModel: WalkingSessionViewModel,
-    bluetoothViewModel: BluetoothViewModel = hiltViewModel()
+    bluetoothViewModel: BluetoothViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
 

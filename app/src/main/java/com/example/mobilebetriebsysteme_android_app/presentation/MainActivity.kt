@@ -11,22 +11,9 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
 import com.example.mobilebetriebsysteme_android_app.presentation.ui_navigator.AppNavGraph
 import dagger.hilt.android.AndroidEntryPoint
-import android.os.Handler
-import android.os.Looper
-import android.view.View
-
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    private val immersiveFlags = (
-            View.SYSTEM_UI_FLAG_IMMERSIVE
-                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            )
 
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -43,8 +30,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        window.decorView.systemUiVisibility = immersiveFlags
-
         requestAllPermissions()
 
         setContent {
@@ -55,16 +40,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            window.decorView.systemUiVisibility = immersiveFlags
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
-            }, 3000)
-        }
-    }
 
     private fun requestAllPermissions() {
         val permissionsToRequest = mutableListOf<String>()

@@ -1,8 +1,8 @@
-package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
+package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import android.app.Application
 
 class ProfileViewModelFactory(private val app: Application) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

@@ -8,8 +8,8 @@ import androidx.navigation.compose.composable
 import com.example.mobilebetriebsysteme_android_app.pages.DualModePage
 import com.example.mobilebetriebsysteme_android_app.pages.MainPage
 import com.example.mobilebetriebsysteme_android_app.pages.ProfilePage
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.ProfileViewModel
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.WalkingSessionViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModel
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {

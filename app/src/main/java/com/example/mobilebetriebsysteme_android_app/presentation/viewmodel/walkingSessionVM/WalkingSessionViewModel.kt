@@ -1,7 +1,6 @@
-package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
+package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM
 
 import android.app.Application
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mobilebetriebsysteme_android_app.data.session.SessionDatabase
@@ -19,7 +18,7 @@ import org.osmdroid.util.GeoPoint
 
 class WalkingSessionViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val sessionDao = SessionDatabase.getDatabase(application).sessionDao()
+    private val sessionDao = SessionDatabase.Companion.getDatabase(application).sessionDao()
     private val averageStepLength = 0.75f
 
     val allSessions: Flow<List<WalkingSessionEntity>> = sessionDao.getAllSessions()
@@ -41,7 +40,7 @@ class WalkingSessionViewModel(application: Application) : AndroidViewModel(appli
 
     val steps: StateFlow<Int> = distanceInMeters
         .map { distance -> (distance / averageStepLength).toInt() }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+        .stateIn(viewModelScope, SharingStarted.Companion.Eagerly, 0)
 
     fun startSession(dualMode: Boolean = false) {
         _isDualModeSession.value = dualMode

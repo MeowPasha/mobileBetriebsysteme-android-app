@@ -23,9 +23,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobilebetriebsysteme_android_app.data.profile.UserProfile
 import com.example.mobilebetriebsysteme_android_app.data.session.WalkingSessionEntity
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.ProfileViewModel
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.WalkingSessionViewModel
-import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.WalkingSessionViewModelFactory
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModelFactory
 import kotlinx.coroutines.launch
 
 data class WalkingSession(val durationSeconds: Int, val distanceMeters: Float)

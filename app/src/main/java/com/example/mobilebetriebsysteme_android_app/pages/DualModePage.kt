@@ -1,5 +1,6 @@
 package com.example.mobilebetriebsysteme_android_app.pages
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,12 @@ fun DualModePage(
 ) {
     val state by viewModel.state.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
+
+    var showDialog by remember { mutableStateOf(true) }
+    var dontShowAgain by remember { mutableStateOf(false) }
+
+    val isConnecting by viewModel.isConnecting.collectAsState()
+
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -147,5 +154,53 @@ fun DualModePage(
                 }
             }
         }
+
+        if (showDialog && !dontShowAgain) {
+            AlertDialog(
+                onDismissRequest = { showDialog = false },
+                confirmButton = {
+                    TextButton(onClick = { showDialog = false }) {
+                        Text("OK")
+                    }
+                },
+                title = { Text("How to Connect in Dual Mode") },
+                text = {
+                    Column {
+                        Text(
+                            "To start a Dual Mode session, one device should tap 'Start Server'.\n" +
+                                    "The other device must tap 'Start Scan' and select the wanted device from the list.\n" +
+                                    "Once connected, you can go back and start a DualMode session from the map."
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = dontShowAgain,
+                                onCheckedChange = { dontShowAgain = it }
+                            )
+                            Text("Don't show this again")
+                        }
+                    }
+                }
+            )
+        }
+
+        if (isConnecting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Connecting... Please wait", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        }
+
+
     }
 }
