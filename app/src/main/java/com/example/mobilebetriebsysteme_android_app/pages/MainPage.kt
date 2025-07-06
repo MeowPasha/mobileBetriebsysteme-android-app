@@ -13,14 +13,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.Alignment
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModel
@@ -32,6 +33,7 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
@@ -46,17 +48,14 @@ import org.osmdroid.views.overlay.Polyline
 @Composable
 fun MainPage(
     navController: NavController,
-    walkingSessionViewModel: WalkingSessionViewModel,
-    bluetoothViewModel: BluetoothViewModel = hiltViewModel(),
+    walkingSessionVM: WalkingSessionViewModel,
+    bluetoothViewModel: BluetoothViewModel,
 ) {
     val context = LocalContext.current
 
     // ProfileViewModel creation using factory for user profile management
     val profileFactory = remember { ProfileViewModelFactory(context.applicationContext as Application) }
     val profileViewModel: ProfileViewModel = viewModel(factory = profileFactory)
-
-    // WalkingSession ViewModel for session tracking (duration, distance, etc.)
-    val walkingSessionVM: WalkingSessionViewModel = viewModel()
 
     // BluetoothViewModel for Bluetooth connection status and control
     val isBluetoothConnected by bluetoothViewModel.isConnected.collectAsState()
@@ -123,6 +122,54 @@ fun MainPage(
     // Destination from WalkingSessionViewModel (in case it changes externally)
     val destinationPoint by walkingSessionVM.destinationPoint.collectAsState()
 
+    val showDialogChallenge by bluetoothViewModel.showChallengeDialog.collectAsState()
+    val challengeDuration by bluetoothViewModel.challengeDuration.collectAsState()
+
+    val challengeAccepted by bluetoothViewModel.challengeAccepted.collectAsState()
+    val challengeFromUser by bluetoothViewModel.challengeFromUser.collectAsState()
+
+    val sessionEndedByRemote by bluetoothViewModel.sessionEndedByRemote.collectAsState()
+
+    // Responsive layout: get screen width and check if device is tablet
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp
+    val isTablet = screenWidth >= 600
+
+    LaunchedEffect(challengeAccepted) {
+        if (challengeAccepted) {
+            destination?.let {
+                walkingSessionVM.setDestination(it)
+            }
+            walkingSessionVM.startSession(true)  // DualMode true
+            snackbarHostState.showSnackbar("Challenge accepted, session started!")
+
+            bluetoothViewModel.resetChallengeAcceptedFlag()
+        }
+    }
+
+    if (showDialogChallenge) {
+        AlertDialog(
+            onDismissRequest = { bluetoothViewModel.declineChallenge() },
+            title = { Text("Challenge Received") },
+            text = { Text("$challengeFromUser sent you a $challengeDuration minutes walking session challenge. Do you accept?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    bluetoothViewModel.acceptChallenge()
+                    walkingSessionVM.startSession(true) // dualMode = true
+                }) {
+                    Text("Accept")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    bluetoothViewModel.declineChallenge()
+                }) {
+                    Text("Decline")
+                }
+            }
+        )
+    }
+
     // On first composition, move map to current or default location
     LaunchedEffect(Unit) {
         try {
@@ -138,6 +185,32 @@ fun MainPage(
     // Automatically open stats panel when session starts, close when session ends
     LaunchedEffect(isSessionActive) {
         showStatsPanel = isSessionActive
+    }
+
+    LaunchedEffect(sessionEndedByRemote) {
+        if (sessionEndedByRemote) {
+            walkingSessionVM.stopSessionAndSave()
+            walkingSessionVM.clearDestination()
+
+            showStatsPanel = false
+            bluetoothViewModel.resetSessionEndedFlag()
+
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("The other user ended the session.")
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        walkingSessionVM.sessionSavedEvent.collect { saved ->
+            coroutineScope.launch {
+                if (saved) {
+                    snackbarHostState.showSnackbar("Session saved successfully!")
+                } else {
+                    snackbarHostState.showSnackbar("Session too short, not saved.")
+                }
+            }
+        }
     }
 
     // Map tap listener to select destination if session is NOT active
@@ -220,12 +293,12 @@ fun MainPage(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(16.dp)
+                .padding(start = 8.dp, top = if (isTablet) 32.dp else 16.dp, end = 8.dp)
                 .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier.padding(if (isTablet) 16.dp else 8.dp)
             ) {
                 IconButton(
                     onClick = { navController.navigate("profile") },
@@ -234,7 +307,7 @@ fun MainPage(
                     Icon(imageVector = Icons.Default.ManageAccounts, contentDescription = "Profile")
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(if (isTablet) 12.dp else 8.dp))
 
                 IconButton(
                     onClick = { navController.navigate("dualmode") },
@@ -248,10 +321,11 @@ fun MainPage(
         // Session status message at top center
         Row(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(Alignment.TopStart)
                 .padding(16.dp)
                 .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .widthIn(max = if (isTablet) 300.dp else 235.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isSessionActive) {
@@ -294,6 +368,10 @@ fun MainPage(
 
         // Start session confirmation dialog
         if (showStartSessionDialog) {
+            val durationOptions = listOf(30, 45, 60, 90) // minutes
+            var selectedDuration by remember { mutableStateOf(durationOptions[0]) }
+            var expanded by remember { mutableStateOf(false) }
+
             AlertDialog(
                 onDismissRequest = {
                     showStartSessionDialog = false
@@ -313,6 +391,31 @@ fun MainPage(
                             Spacer(Modifier.width(8.dp))
                             Text("Start DualMode session? (A Competitive Mode, needs a Bluetooth connection!)")
                         }
+
+                        Spacer(Modifier.height(12.dp))
+                        Text("How long should the walk be?")
+                        Box {
+                            Text(
+                                "$selectedDuration minutes",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { expanded = true }
+                                    .padding(8.dp)
+                                    .background(Color.LightGray.copy(alpha = 0.3f))
+                            )
+                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                                durationOptions.forEach { duration ->
+                                    DropdownMenuItem(
+                                        text = { Text("$duration minutes") },
+                                        onClick = {
+                                            selectedDuration = duration
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
                     }
                 },
                 confirmButton = {
@@ -325,9 +428,26 @@ fun MainPage(
                             }
                             dualModeChecked = false
                         } else {
-                            destination = pendingDestination
-                            pendingDestination?.let { walkingSessionVM.setDestination(it) }
-                            walkingSessionVM.startSession(dualModeChecked)
+                            if (dualModeChecked) {
+                                // Challenge gönder
+                                val userName = profileViewModel.profile.value?.name ?: "Unknown"
+                                val requestJson = JSONObject().apply {
+                                    put("type", "challenge")
+                                    put("duration", selectedDuration)
+                                    put("from", userName)
+                                }
+                                bluetoothViewModel.sendMessage(requestJson.toString())
+
+                                // Burada session başlamaz, challenge yanıtı beklenir.
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Challenge sent. Waiting for response...")
+                                }
+                            } else {
+                                // Normal session başlat
+                                destination = pendingDestination
+                                pendingDestination?.let { walkingSessionVM.setDestination(it) }
+                                walkingSessionVM.startSession(false)
+                            }
                             showStartSessionDialog = false
                             pendingDestination = null
                             dualModeChecked = false
@@ -389,7 +509,8 @@ fun MainPage(
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp),
+                .padding(if (isTablet) 32.dp else 16.dp)
+                .navigationBarsPadding(),
             containerColor = Color.White,
             contentColor = Color.Black
         ) {
@@ -422,7 +543,7 @@ fun MainPage(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(16.dp)
+                    .padding(if (isTablet) 24.dp else 16.dp)
                     .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(16.dp))
                     .clickable { showStatsPanel = true }
                     .padding(12.dp)
@@ -437,11 +558,13 @@ fun MainPage(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(16.dp)
+                    .navigationBarsPadding() // Prevent overlap with system navigation
                     .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(16.dp))
                     .padding(horizontal = 12.dp, vertical = 6.dp)
                     .clickable { showStatsPanel = true },
                 verticalAlignment = Alignment.CenterVertically
-            ) {
+            )
+            {
                 Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Show Stats", tint = Color.Black)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = "Click for stats", color = Color.Black, style = MaterialTheme.typography.bodyMedium)
@@ -453,10 +576,10 @@ fun MainPage(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 70.dp)
-                    .fillMaxWidth(0.9f)
+                    .padding(bottom = if (isTablet) 90.dp else 70.dp)
+                    .fillMaxWidth(if (isTablet) 0.6f else 0.9f)
                     .background(Color.White.copy(alpha = 0.95f), RoundedCornerShape(12.dp))
-                    .padding(16.dp)
+                    .padding(if (isTablet) 24.dp else 16.dp)
             ) {
                 Column(horizontalAlignment = Alignment.Start) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -476,6 +599,7 @@ fun MainPage(
                     Button(
                         onClick = {
                             walkingSessionVM.stopSessionAndSave()
+                            bluetoothViewModel.sendSessionEnd()
                             walkingSessionVM.clearDestination()
                             showStatsPanel = false
                         },
@@ -488,6 +612,7 @@ fun MainPage(
         }
     }
 }
+
 
 // -------- Helper Functions --------
 

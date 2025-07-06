@@ -1,24 +1,24 @@
 package com.example.mobilebetriebsysteme_android_app.pages
 
+import android.annotation.SuppressLint
 import android.app.Application
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobilebetriebsysteme_android_app.data.profile.UserProfile
@@ -28,8 +28,7 @@ import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walki
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModelFactory
 import kotlinx.coroutines.launch
 
-data class WalkingSession(val durationSeconds: Int, val distanceMeters: Float)
-
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun ProfilePage(
     viewModel: ProfileViewModel,
@@ -45,7 +44,6 @@ fun ProfilePage(
     var age by remember { mutableStateOf(TextFieldValue("")) }
     var stepGoal by remember { mutableStateOf(TextFieldValue("")) }
     var height by remember { mutableStateOf(TextFieldValue("")) }
-    var avgSpeed by remember { mutableStateOf("0.0 km/h") }
 
     LaunchedEffect(userProfile) {
         userProfile?.let {
@@ -56,194 +54,144 @@ fun ProfilePage(
         }
     }
 
-    val displayName = if (name.text.isNotBlank()) name.text else "User"
+    fun validateInputs(): Boolean {
+        return name.text.isNotBlank()
+                && age.text.toIntOrNull() != null
+                && height.text.toIntOrNull() != null
+                && stepGoal.text.toIntOrNull() != null
+    }
 
+    val displayName = if (name.text.isNotBlank()) name.text else "User"
     val context = LocalContext.current
     val sessionViewModel: WalkingSessionViewModel = viewModel(
         factory = WalkingSessionViewModelFactory(context.applicationContext as Application)
     )
-
-    val allSessions by sessionViewModel.allSessions.collectAsState<List<WalkingSessionEntity>, List<WalkingSessionEntity>>(initial = emptyList())
-    val scrollState = rememberScrollState()
+    val allSessions by sessionViewModel.allSessions.collectAsState(initial = emptyList())
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(scrollState)
-                .padding(24.dp)
         ) {
-            // Üst kısım profile içeriği
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Hi $displayName!\nWelcome to your Profile Page",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    ),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 32.dp)
-                )
-
-                HorizontalDivider(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 50.dp)
-                        .padding(bottom = 32.dp),
-                    thickness = 2.dp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier.size(80.dp),
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Profile Image",
-                            modifier = Modifier.fillMaxSize(),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(24.dp))
-
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = name.text.ifBlank { "Name" },
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        Text(
-                            text = "Age: ${age.text.ifBlank { "--" }}",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Text(
-                            text = "Height: ${height.text.ifBlank { "--" }} cm",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = age,
-                    onValueChange = { age = it },
-                    label = { Text("Age") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = height,
-                    onValueChange = { height = it },
-                    label = { Text("Height (cm)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = stepGoal,
-                    onValueChange = { stepGoal = it },
-                    label = { Text("Step Goal") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Button(
-                    onClick = {
-                        val newProfile = try {
-                            UserProfile(
-                                id = 0,
-                                name = name.text,
-                                age = age.text.toInt(),
-                                height = height.text.toInt(),
-                                stepGoal = stepGoal.text.toInt(),
-                            )
-                        } catch (e: NumberFormatException) {
-                            null
-                        }
-
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Profile Saved!")
-                        }
-
-                        newProfile?.let {
-                            scope.launch {
-                                viewModel.saveProfile(it)
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Save")
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Button(
-                    onClick = onClose,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors()
-                ) {
-                    Text("Close")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = "Sessions",
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            val isTablet = maxWidth > 600.dp
 
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                item {
+                    Text(
+                        text = "Hi $displayName!\nWelcome to your Profile Page",
+                        style = MaterialTheme.typography.headlineLarge,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        thickness = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier.size(80.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.AccountCircle,
+                                contentDescription = "Profile Image",
+                                modifier = Modifier.fillMaxSize(),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = name.text.ifBlank { "Name" },
+                                style = MaterialTheme.typography.headlineSmall
+                            )
+                            Text(text = "Age: ${age.text.ifBlank { "--" }}")
+                            Text(text = "Height: ${height.text.ifBlank { "--" }} cm")
+                        }
+                    }
+                }
+                item {
+                    if (isTablet) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(value = age, onValueChange = { age = it }, label = { Text("Age") }, keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(value = height, onValueChange = { height = it }, label = { Text("Height (cm)") }, keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+                                Spacer(modifier = Modifier.height(12.dp))
+                                OutlinedTextField(value = stepGoal, onValueChange = { stepGoal = it }, label = { Text("Step Goal") }, keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            }
+                        }
+                    } else {
+                        Column {
+                            OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(value = age, onValueChange = { age = it }, label = { Text("Age") }, keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(value = height, onValueChange = { height = it }, label = { Text("Height (cm)") }, keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(value = stepGoal, onValueChange = { stepGoal = it }, label = { Text("Step Goal") }, keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        }
+                    }
+                }
+                item {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(onClick = {
+                            if (!validateInputs()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Please fill in all fields correctly before saving.")
+                                }
+                                return@Button
+                            }
+                            val newProfile = try {
+                                UserProfile(0, name.text, age.text.toInt(), height.text.toInt(), stepGoal.text.toInt())
+                            } catch (e: NumberFormatException) {
+                                null
+                            }
+                            newProfile?.let {
+                                scope.launch {
+                                    viewModel.saveProfile(it)
+                                    snackbarHostState.showSnackbar("Profile saved!")
+                                }
+                            }
+                        }, modifier = Modifier.weight(1f)) {
+                            Text("Save")
+                        }
+                        OutlinedButton(onClick = onClose, modifier = Modifier.weight(1f)) {
+                            Text("Close")
+                        }
+                    }
+                }
+                item {
+                    Text("Sessions", style = MaterialTheme.typography.headlineMedium)
+                }
                 items(allSessions) { session ->
                     SessionItem(
                         session = session,
-                        onDelete = { sessionToDelete ->
+                        onDelete = {
                             scope.launch {
-                                walkingSessionViewModel.deleteSession(sessionToDelete)
+                                walkingSessionViewModel.deleteSession(it)
                                 snackbarHostState.showSnackbar("Session deleted")
                             }
                         },
@@ -262,7 +210,6 @@ fun SessionItem(
     calculateSteps: (Float) -> Int
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -275,22 +222,33 @@ fun SessionItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(text = "Duration: ${session.durationSeconds / 60} min ${session.durationSeconds % 60} sec")
-                Text(text = "Distance: %.2f km".format(session.distanceMeters / 1000))
-                Text(text = "Steps: ${calculateSteps(session.distanceMeters)}")
-                Text(text = "Date: ${java.text.SimpleDateFormat("dd.MM.yyyy HH:mm").format(java.util.Date(session.timestamp))}")
+                Text("Duration: ${session.durationSeconds / 60} min ${session.durationSeconds % 60} sec")
+                Text("Distance: %.2f km".format(session.distanceMeters / 1000))
+                Text("Steps: ${calculateSteps(session.distanceMeters)}")
+                Text("Date: ${java.text.SimpleDateFormat("dd.MM.yyyy HH:mm").format(java.util.Date(session.timestamp))}")
             }
 
-            IconButton(onClick = { showConfirmDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Session",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (session.isDualMode) {
+                    Icon(
+                        imageVector = Icons.Default.VideogameAsset,
+                        contentDescription = "Dual Mode Session",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                IconButton(onClick = { showConfirmDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete Session",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
-
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
@@ -300,18 +258,11 @@ fun SessionItem(
                 TextButton(onClick = {
                     onDelete(session)
                     showConfirmDialog = false
-                }) {
-                    Text("Yes")
-                }
+                }) { Text("Yes") }
             },
             dismissButton = {
-                TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("No")
-                }
+                TextButton(onClick = { showConfirmDialog = false }) { Text("No") }
             }
         )
     }
 }
-
-
-

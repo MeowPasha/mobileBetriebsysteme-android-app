@@ -1,5 +1,6 @@
 package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mobilebetriebsysteme_android_app.bluetooth.AndroidBluetoothController
@@ -9,10 +10,13 @@ import com.example.mobilebetriebsysteme_android_app.presentation.BluetoothUiStat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import org.json.JSONException
+import org.json.JSONObject
 import javax.inject.Inject
 
 @HiltViewModel
@@ -41,15 +45,34 @@ class BluetoothViewModel @Inject constructor(
     private val _isConnecting = MutableStateFlow(false)
     val isConnecting = _isConnecting.asStateFlow()
 
+    private val _showChallengeDialog = MutableStateFlow(false)
+    val showChallengeDialog: StateFlow<Boolean> = _showChallengeDialog
+
+    private val _challengeDuration = MutableStateFlow(0)
+    val challengeDuration: StateFlow<Int> = _challengeDuration
+
+    private val _challengeAccepted = MutableStateFlow(false)
+    val challengeAccepted = _challengeAccepted.asStateFlow()
+
+    private val _challengeFromUser = MutableStateFlow<String>("Unknown")
+    val challengeFromUser = _challengeFromUser.asStateFlow()
+
+    private val _sessionEndedByRemote = MutableStateFlow(false)
+    val sessionEndedByRemote = _sessionEndedByRemote.asStateFlow()
 
     init {
         if (bluetoothController is AndroidBluetoothController) {
             bluetoothController.onConnectionResult = { success, deviceName ->
                 _isConnecting.value = false
                 _isConnected.value = success
-                _connectionStatus.value = if (success) "Connection successful: $deviceName" else "Connection failed"
+                _connectionStatus.value = if (success) {
+                    "Connection successful: $deviceName"
+                } else {
+                    "Connection failed"
+                }
             }
 
+            setupBluetoothCallbacks(bluetoothController)
         }
     }
 
@@ -76,7 +99,113 @@ class BluetoothViewModel @Inject constructor(
         }
     }
 
-    fun isBluetoothConnected(): Boolean = _isConnected.value
+    fun sendMessage(message: String) {
+        Log.d("BluetoothViewModel", "Sending message: $message")
+        if (bluetoothController is AndroidBluetoothController) {
+            bluetoothController.sendMessage(message)
+        }
+    }
+
+    fun acceptChallenge() {
+        _showChallengeDialog.value = false
+        _challengeAccepted.value = true
+
+        val response = JSONObject()
+        response.put("type", "challenge_response")
+        response.put("accepted", true)
+        response.put("duration", _challengeDuration.value)
+
+        sendMessage(response.toString())
+    }
+
+    fun declineChallenge() {
+        _showChallengeDialog.value = false
+        _challengeAccepted.value = false
+
+        val response = JSONObject()
+        response.put("type", "challenge_response")
+        response.put("accepted", false)
+
+        sendMessage(response.toString())
+    }
+
+    fun sendChallenge(duration: Int) {
+        val json = JSONObject().apply {
+            put("type", "challenge")
+            put("duration", duration)
+        }
+        sendMessage(json.toString())
+    }
+
+    fun sendSessionEnd() {
+        val json = JSONObject().apply {
+            put("type", "session_end")
+        }
+        sendMessage(json.toString())
+    }
+
+    fun resetChallengeAcceptedFlag() {
+        _challengeAccepted.value = false
+    }
+
+    fun resetSessionEndedFlag() {
+        _sessionEndedByRemote.value = false
+    }
+
+    fun setupBluetoothCallbacks(bluetoothController: AndroidBluetoothController) {
+        bluetoothController.onMessageReceived = { message ->
+            Log.d("BluetoothViewModel", "Received message: $message")
+
+            val jsonStrings = message.split("}{").mapIndexed { index, part ->
+                when (index) {
+                    0 -> part + "}"
+                    message.split("}{").lastIndex -> "{" + part
+                    else -> "{" + part + "}"
+                }
+            }
+
+            jsonStrings.forEach { jsonStr ->
+                try {
+                    val json = JSONObject(jsonStr)
+                    when (json.getString("type")) {
+                        "challenge" -> {
+                            val duration = json.getInt("duration")
+                            val fromUser = json.optString("from", "Unknown")
+                            _challengeDuration.value = duration
+                            _challengeFromUser.value = fromUser
+                            _showChallengeDialog.value = true
+                            Log.d("BluetoothViewModel", "Challenge received, show dialog: true, duration=$duration")
+                        }
+                        "DUAL_SESSION_REQUEST" -> {
+                            Log.d("BluetoothViewModel", "Dual session request received")
+                            // Burada istersen ekstra işlemler yapabilirsin
+                        }
+                        "challenge_response" -> {
+                            val accepted = json.getBoolean("accepted")
+                            val duration = json.optInt("duration", 0)
+                            if (accepted) {
+                                _challengeAccepted.value = true
+                                _connectionStatus.value = "Challenge accepted! Duration: $duration min"
+                            } else {
+                                _challengeAccepted.value = false
+                                _connectionStatus.value = "Challenge declined by user."
+                            }
+                        }
+                        "session_end" -> {
+                            Log.d("BluetoothViewModel", "Session end received from remote")
+                            _sessionEndedByRemote.value = true
+                        }
+                        else -> {
+                            Log.d("BluetoothViewModel", "Unknown message type: ${json.getString("type")}")
+                        }
+                    }
+                } catch (e: JSONException) {
+                    e.printStackTrace()
+                    Log.e("BluetoothViewModel", "Failed to parse JSON: $jsonStr")
+                }
+            }
+        }
+    }
 
     fun stopAll() {
         bluetoothController.closeConnection()

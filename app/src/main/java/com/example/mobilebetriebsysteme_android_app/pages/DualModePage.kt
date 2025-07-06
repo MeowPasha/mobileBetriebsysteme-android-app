@@ -22,12 +22,10 @@ fun DualModePage(
 ) {
     val state by viewModel.state.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
-
-    var showDialog by remember { mutableStateOf(true) }
-    var dontShowAgain by remember { mutableStateOf(false) }
-
     val isConnecting by viewModel.isConnecting.collectAsState()
 
+    var showInfoDialog by remember { mutableStateOf(true) }
+    var dontShowAgain by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -48,7 +46,7 @@ fun DualModePage(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Action Buttons in 2x2 Grid
+            // Scan - Stop - Server
             Column {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Button(
@@ -155,11 +153,12 @@ fun DualModePage(
             }
         }
 
-        if (showDialog && !dontShowAgain) {
+        // Info Dialog (How to use)
+        if (showInfoDialog && !dontShowAgain) {
             AlertDialog(
-                onDismissRequest = { showDialog = false },
+                onDismissRequest = { showInfoDialog = false },
                 confirmButton = {
-                    TextButton(onClick = { showDialog = false }) {
+                    TextButton(onClick = { showInfoDialog = false }) {
                         Text("OK")
                     }
                 },
@@ -186,6 +185,7 @@ fun DualModePage(
             )
         }
 
+        // Connecting State
         if (isConnecting) {
             Box(
                 modifier = Modifier
@@ -200,7 +200,5 @@ fun DualModePage(
                 }
             }
         }
-
-
     }
 }

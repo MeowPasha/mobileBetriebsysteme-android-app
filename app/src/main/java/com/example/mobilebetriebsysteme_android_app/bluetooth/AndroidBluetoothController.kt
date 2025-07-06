@@ -49,7 +49,11 @@ class AndroidBluetoothController @Inject constructor(
     private var serverSocket: BluetoothServerSocket? = null
     private var clientSocket: BluetoothSocket? = null
 
+    private var socket: BluetoothSocket? = null
+    var onMessageReceived: ((String) -> Unit)? = null
+
     var onConnectionResult: ((success: Boolean, deviceName: String?) -> Unit)? = null
+    private var isReceiverRegistered = false
 
     init {
         updatePairedDevices()
@@ -57,20 +61,22 @@ class AndroidBluetoothController @Inject constructor(
 
     @SuppressLint("MissingPermission")
     override fun startDiscovery() {
-        if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
-            return
+        if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) return
+
+        if (!isReceiverRegistered) {
+            context.registerReceiver(
+                foundDeviceReciever,
+                IntentFilter(android.bluetooth.BluetoothDevice.ACTION_FOUND)
+            )
+            isReceiverRegistered = true
         }
-        context.registerReceiver(
-            foundDeviceReciever,
-            IntentFilter(android.bluetooth.BluetoothDevice.ACTION_FOUND)
-        )
         updatePairedDevices()
         bluetoothAdapter?.startDiscovery()
     }
 
     @SuppressLint("MissingPermission")
     override fun stopDiscovery() {
-        if (!hasPermission(android.Manifest.permission.BLUETOOTH_SCAN)) {
+        if (!hasPermission(Manifest.permission.BLUETOOTH_SCAN)) {
             return
         }
 
@@ -86,11 +92,13 @@ class AndroidBluetoothController @Inject constructor(
                 serverSocket = adapter.listenUsingRfcommWithServiceRecord("MyAppServer", uuid)
 
                 while (true) {
-                    val socket = serverSocket?.accept() ?: break
-                    clientSocket = socket
-                    println("Server connected to: ${socket.remoteDevice.name}")
-                    onConnectionResult?.invoke(true, socket.remoteDevice.name)
-                    // Daha sonra veri okuma/yazma eklenebilir
+                    val acceptedSocket = serverSocket?.accept() ?: break
+                    clientSocket = acceptedSocket
+                    socket = acceptedSocket  // Burada socket ataması önemli
+                    println("Server connected to: ${acceptedSocket.remoteDevice.name}")
+                    onConnectionResult?.invoke(true, acceptedSocket.remoteDevice.name)
+
+                    startListening(acceptedSocket)  // Bağlantı sonrası mesaj dinlemeye başla
                 }
             } catch (e: IOException) {
                 e.printStackTrace()
@@ -107,11 +115,14 @@ class AndroidBluetoothController @Inject constructor(
             try {
                 val uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
                 val realDevice = bluetoothAdapter?.getRemoteDevice(device.address)
-                val socket = realDevice?.createRfcommSocketToServiceRecord(uuid)
-                socket?.connect()
-                clientSocket = socket
+                val newSocket = realDevice?.createRfcommSocketToServiceRecord(uuid)
+                newSocket?.connect()
+                clientSocket = newSocket
+                socket = newSocket
                 println("Client connected to: ${device.name}")
                 onConnectionResult?.invoke(true, device.name)
+
+                startListening(newSocket)
             } catch (e: IOException) {
                 e.printStackTrace()
                 println("Client connection failed: ${e.message}")
@@ -120,12 +131,48 @@ class AndroidBluetoothController @Inject constructor(
         }
     }
 
+    fun sendMessage(message: String) {
+        try {
+            socket?.outputStream?.apply {
+                write(message.toByteArray(Charsets.UTF_8))
+                flush()
+            }
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun startListening(socket: BluetoothSocket?) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val inputStream = socket?.inputStream
+            val buffer = ByteArray(1024)
+            try {
+                while (true) {
+                    val bytesRead = inputStream?.read(buffer)
+                    if (bytesRead != null && bytesRead > 0) {
+                        val message = String(buffer, 0, bytesRead, Charsets.UTF_8)
+                        println("Received message: $message")
+                        onMessageReceived?.invoke(message)
+                    }
+                }
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun sendChallenge(durationMinutes: Int) {
+        val json = """{"type":"challenge","duration":$durationMinutes}"""
+        sendMessage(json)
+    }
+
     override fun closeConnection() {
         try {
             clientSocket?.close()
             clientSocket = null
             serverSocket?.close()
             serverSocket = null
+            socket = null
         } catch (e: IOException) {
             e.printStackTrace()
         }
@@ -135,14 +182,16 @@ class AndroidBluetoothController @Inject constructor(
         return clientSocket?.isConnected ?: false
     }
 
-
     override fun release() {
-        context.unregisterReceiver(foundDeviceReciever)
+        if (isReceiverRegistered) {
+            context.unregisterReceiver(foundDeviceReciever)
+            isReceiverRegistered = false
+        }
     }
 
     @SuppressLint("MissingPermission")
     private fun updatePairedDevices() {
-        if (!hasPermission(android.Manifest.permission.BLUETOOTH_CONNECT)) {
+        if (!hasPermission(Manifest.permission.BLUETOOTH_CONNECT)) {
             return
         }
         bluetoothAdapter

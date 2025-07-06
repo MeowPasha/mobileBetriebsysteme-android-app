@@ -7,9 +7,11 @@ import com.example.mobilebetriebsysteme_android_app.data.session.SessionDatabase
 import com.example.mobilebetriebsysteme_android_app.data.session.WalkingSessionEntity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -38,6 +40,9 @@ class WalkingSessionViewModel(application: Application) : AndroidViewModel(appli
     private val _isDualModeSession = MutableStateFlow(false)
     val isDualModeSession = _isDualModeSession.asStateFlow()
 
+    private val _sessionSavedEvent = MutableSharedFlow<Boolean>()
+    val sessionSavedEvent = _sessionSavedEvent.asSharedFlow()
+
     val steps: StateFlow<Int> = distanceInMeters
         .map { distance -> (distance / averageStepLength).toInt() }
         .stateIn(viewModelScope, SharingStarted.Companion.Eagerly, 0)
@@ -54,12 +59,17 @@ class WalkingSessionViewModel(application: Application) : AndroidViewModel(appli
         if (_isSessionActive.value) {
             _isSessionActive.value = false
             viewModelScope.launch {
-                val session = WalkingSessionEntity(
-                    durationSeconds = _sessionDurationInSeconds.value,
-                    distanceMeters = _distanceInMeters.value,
-                    isDualMode = _isDualModeSession.value
-                )
-                sessionDao.insertSession(session)
+                if (_sessionDurationInSeconds.value >= 60) {
+                    val session = WalkingSessionEntity(
+                        durationSeconds = _sessionDurationInSeconds.value,
+                        distanceMeters = _distanceInMeters.value,
+                        isDualMode = _isDualModeSession.value
+                    )
+                    sessionDao.insertSession(session)
+                    _sessionSavedEvent.emit(true)
+                } else {
+                    _sessionSavedEvent.emit(false)
+                }
                 resetSessionData()
             }
         }
@@ -96,6 +106,7 @@ class WalkingSessionViewModel(application: Application) : AndroidViewModel(appli
         _sessionDurationInSeconds.value = 0
         _distanceInMeters.value = 0f
         _isDualModeSession.value = false
+        _destinationPoint.value = null
     }
 
     fun setDestination(geoPoint: GeoPoint) {

@@ -4,11 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.example.mobilebetriebsysteme_android_app.data.profile.UserProfileDao
 
 //@Database(UserProfile) defines which class should be in db.
 //In this case its UserProfile.
-@Database(entities = [UserProfile::class], version = 4)
+@Database(entities = [UserProfile::class], version = 1)
 abstract class ProfileDatabase : RoomDatabase() {
 
     abstract fun userProfileDao(): UserProfileDao

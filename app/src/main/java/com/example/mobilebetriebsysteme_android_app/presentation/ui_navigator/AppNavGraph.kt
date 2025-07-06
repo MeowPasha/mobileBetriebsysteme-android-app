@@ -8,17 +8,25 @@ import androidx.navigation.compose.composable
 import com.example.mobilebetriebsysteme_android_app.pages.DualModePage
 import com.example.mobilebetriebsysteme_android_app.pages.MainPage
 import com.example.mobilebetriebsysteme_android_app.pages.ProfilePage
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.BluetoothViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModel
 
 @Composable
-fun AppNavGraph(navController: NavHostController) {
+fun AppNavGraph(
+    navController: NavHostController,
+    bluetoothViewModel: BluetoothViewModel
+) {
     val profileViewModel: ProfileViewModel = viewModel()
     val walkingSessionViewModel: WalkingSessionViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = Screen.Main.route) {
         composable(Screen.Main.route) {
-            MainPage(navController = navController, walkingSessionViewModel = walkingSessionViewModel)
+            MainPage(
+                navController = navController,
+                walkingSessionVM = walkingSessionViewModel,
+                bluetoothViewModel = bluetoothViewModel
+            )
         }
         composable(Screen.Profile.route) {
             ProfilePage(
@@ -28,8 +36,12 @@ fun AppNavGraph(navController: NavHostController) {
             )
         }
         composable(Screen.DualMode.route) {
-            DualModePage(onClose = { navController.popBackStack() })
+            DualModePage(
+                viewModel = bluetoothViewModel,
+                onClose = { navController.popBackStack() }
+            )
         }
     }
 }
+
 
