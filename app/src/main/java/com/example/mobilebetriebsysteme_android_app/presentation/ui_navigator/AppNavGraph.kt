@@ -32,12 +32,13 @@ fun AppNavGraph(
             ProfilePage(
                 viewModel = profileViewModel,
                 walkingSessionViewModel = walkingSessionViewModel,
-                onClose = { navController.popBackStack() }
+                bluetoothViewModel = bluetoothViewModel,
+                onClose = { navController.popBackStack() },
             )
         }
         composable(Screen.DualMode.route) {
             DualModePage(
-                viewModel = bluetoothViewModel,
+                bluetoothViewModel = bluetoothViewModel,
                 onClose = { navController.popBackStack() }
             )
         }

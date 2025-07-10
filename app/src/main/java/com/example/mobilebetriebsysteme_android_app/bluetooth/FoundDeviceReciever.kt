@@ -17,7 +17,6 @@ class FoundDeviceReciever(
         when(intent?.action){
             BluetoothDevice.ACTION_FOUND -> {
                 if (context != null && ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    // no permission granted, do nothing
                     return
                 }
 

@@ -6,8 +6,10 @@ import android.app.Application
 import android.content.Context
 import android.location.Location
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModel
@@ -122,18 +125,14 @@ fun MainPage(
     // Destination from WalkingSessionViewModel (in case it changes externally)
     val destinationPoint by walkingSessionVM.destinationPoint.collectAsState()
 
+    // Bluetooth challenge dialog and related state
     val showDialogChallenge by bluetoothViewModel.showChallengeDialog.collectAsState()
     val challengeDuration by bluetoothViewModel.challengeDuration.collectAsState()
-
     val challengeAccepted by bluetoothViewModel.challengeAccepted.collectAsState()
     val challengeFromUser by bluetoothViewModel.challengeFromUser.collectAsState()
-
     val sessionEndedByRemote by bluetoothViewModel.sessionEndedByRemote.collectAsState()
 
-    // Responsive layout: get screen width and check if device is tablet
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp
-    val isTablet = screenWidth >= 600
+    val isCompareRequest by bluetoothViewModel.isCompareRequest.collectAsState()
 
     LaunchedEffect(challengeAccepted) {
         if (challengeAccepted) {
@@ -150,12 +149,30 @@ fun MainPage(
     if (showDialogChallenge) {
         AlertDialog(
             onDismissRequest = { bluetoothViewModel.declineChallenge() },
-            title = { Text("Challenge Received") },
-            text = { Text("$challengeFromUser sent you a $challengeDuration minutes walking session challenge. Do you accept?") },
+            title = {
+                Text(
+                    if (isCompareRequest) "Compare Request Received"
+                    else "Challenge Received"
+                )
+            },
+            text = {
+                Text(
+                    if (isCompareRequest)
+                        "The other user wants to compare session results. Do you accept?"
+                    else
+                        "$challengeFromUser sent you a $challengeDuration minutes walking session challenge. Do you accept?"
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     bluetoothViewModel.acceptChallenge()
-                    walkingSessionVM.startSession(true) // dualMode = true
+
+                    if (isCompareRequest) {
+                        navController.navigate("profile")
+                    } else {
+                        walkingSessionVM.startSession(true)
+                        walkingSessionVM.setOpponentMAC(bluetoothViewModel.getMacAddress().toString())
+                    }
                 }) {
                     Text("Accept")
                 }
@@ -169,6 +186,7 @@ fun MainPage(
             }
         )
     }
+
 
     // On first composition, move map to current or default location
     LaunchedEffect(Unit) {
@@ -293,39 +311,48 @@ fun MainPage(
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(start = 8.dp, top = if (isTablet) 32.dp else 16.dp, end = 8.dp)
+                .padding(start = 8.dp, top = 16.dp, end = 8.dp) // fixed padding for phone
                 .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(if (isTablet) 16.dp else 8.dp)
+                modifier = Modifier.padding(8.dp) // fixed padding for phone
             ) {
                 IconButton(
                     onClick = { navController.navigate("profile") },
-                    modifier = Modifier.background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                    modifier = Modifier.background(
+                        Color.White.copy(alpha = 0.85f),
+                        RoundedCornerShape(8.dp)
+                    )
                 ) {
                     Icon(imageVector = Icons.Default.ManageAccounts, contentDescription = "Profile")
                 }
 
-                Spacer(modifier = Modifier.height(if (isTablet) 12.dp else 8.dp))
+                Spacer(modifier = Modifier.height(8.dp)) // fixed spacer for phone
 
                 IconButton(
                     onClick = { navController.navigate("dualmode") },
-                    modifier = Modifier.background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
+                    modifier = Modifier.background(
+                        Color.White.copy(alpha = 0.85f),
+                        RoundedCornerShape(8.dp)
+                    )
                 ) {
-                    Icon(imageVector = Icons.Default.VideogameAsset, contentDescription = "Dual Mode")
+                    Icon(
+                        imageVector = Icons.Default.VideogameAsset,
+                        contentDescription = "Dual Mode"
+                    )
                 }
             }
         }
 
-        // Session status message at top center
+        // Session status message at top left
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(16.dp)
                 .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
                 .padding(horizontal = 12.dp, vertical = 6.dp)
-                .widthIn(max = if (isTablet) 300.dp else 235.dp),
+                .width(235.dp), // fixed width for phone only
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isSessionActive) {
@@ -403,7 +430,9 @@ fun MainPage(
                                     .padding(8.dp)
                                     .background(Color.LightGray.copy(alpha = 0.3f))
                             )
-                            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                            DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }) {
                                 durationOptions.forEach { duration ->
                                     DropdownMenuItem(
                                         text = { Text("$duration minutes") },
@@ -415,7 +444,6 @@ fun MainPage(
                                 }
                             }
                         }
-
                     }
                 },
                 confirmButton = {
@@ -429,7 +457,7 @@ fun MainPage(
                             dualModeChecked = false
                         } else {
                             if (dualModeChecked) {
-                                // Challenge gönder
+                                // Send challenge to the other user
                                 val userName = profileViewModel.profile.value?.name ?: "Unknown"
                                 val requestJson = JSONObject().apply {
                                     put("type", "challenge")
@@ -438,12 +466,12 @@ fun MainPage(
                                 }
                                 bluetoothViewModel.sendMessage(requestJson.toString())
 
-                                // Burada session başlamaz, challenge yanıtı beklenir.
+                                // Do not start session here; wait for challenge acceptance
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar("Challenge sent. Waiting for response...")
                                 }
                             } else {
-                                // Normal session başlat
+                                // Start normal walking session
                                 destination = pendingDestination
                                 pendingDestination?.let { walkingSessionVM.setDestination(it) }
                                 walkingSessionVM.startSession(false)
@@ -509,7 +537,7 @@ fun MainPage(
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(if (isTablet) 32.dp else 16.dp)
+                .padding(16.dp)
                 .navigationBarsPadding(),
             containerColor = Color.White,
             contentColor = Color.Black
@@ -543,7 +571,7 @@ fun MainPage(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(if (isTablet) 24.dp else 16.dp)
+                    .padding(start = 16.dp, bottom = 72.dp)
                     .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(16.dp))
                     .clickable { showStatsPanel = true }
                     .padding(12.dp)
@@ -557,17 +585,23 @@ fun MainPage(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(16.dp)
-                    .navigationBarsPadding() // Prevent overlap with system navigation
+                    .padding(start = 16.dp, bottom = 72.dp)
                     .background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(16.dp))
                     .padding(horizontal = 12.dp, vertical = 6.dp)
                     .clickable { showStatsPanel = true },
                 verticalAlignment = Alignment.CenterVertically
-            )
-            {
-                Icon(imageVector = Icons.Default.ArrowUpward, contentDescription = "Show Stats", tint = Color.Black)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowUpward,
+                    contentDescription = "Show Stats",
+                    tint = Color.Black
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Click for stats", color = Color.Black, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "Click for stats",
+                    color = Color.Black,
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
 
@@ -576,26 +610,38 @@ fun MainPage(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = if (isTablet) 90.dp else 70.dp)
-                    .fillMaxWidth(if (isTablet) 0.6f else 0.9f)
+                    .padding(bottom = 72.dp)
+                    .fillMaxWidth(0.95f)
                     .background(Color.White.copy(alpha = 0.95f), RoundedCornerShape(12.dp))
-                    .padding(if (isTablet) 24.dp else 16.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Column(horizontalAlignment = Alignment.Start) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        IconButton(onClick = { showStatsPanel = false }) {
-                            Icon(imageVector = Icons.Default.ArrowDownward, contentDescription = "Hide Stats")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Walking Stats",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+
+                        IconButton(
+                            onClick = { showStatsPanel = false },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Hide Stats",
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
 
-                    Text("Walking Stats", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
-
                     WalkingStats(sessionViewModel = walkingSessionVM)
 
-                    Spacer(Modifier.height(12.dp))
-
-                    // Finish Session button to end current walking session
                     Button(
                         onClick = {
                             walkingSessionVM.stopSessionAndSave()
@@ -603,7 +649,9 @@ fun MainPage(
                             walkingSessionVM.clearDestination()
                             showStatsPanel = false
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
                     ) {
                         Text("Finish Session")
                     }
@@ -675,12 +723,38 @@ private fun drawUserPath(mapView: MapView, points: List<GeoPoint>) {
 fun WalkingStats(sessionViewModel: WalkingSessionViewModel) {
     val time by sessionViewModel.sessionDurationInSeconds.collectAsState()
     val distance by sessionViewModel.distanceInMeters.collectAsState()
+    val isDual = sessionViewModel.isDualModeSession.collectAsState().value
 
-    Column(horizontalAlignment = Alignment.Start) {
-        Text(text = "Duration: ${time / 60} min ${time % 60} sec")
-        Text(text = "Distance: %.2f km".format(distance / 1000.0))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        if (isDual) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SportsEsports,
+                    contentDescription = "Dual Mode",
+                    tint = Color(0xFF1565C0),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Dual Mode Active",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                )
+            }
+        }
+
+        Text("Duration: ${time / 60} min ${time % 60} sec", style = MaterialTheme.typography.bodyMedium)
+        Text("Distance: %.2f km".format(distance / 1000.0), style = MaterialTheme.typography.bodyMedium)
     }
 }
+
 
 @SuppressLint("MissingPermission")
 suspend fun getCurrentLocation(context: Context): Location? {

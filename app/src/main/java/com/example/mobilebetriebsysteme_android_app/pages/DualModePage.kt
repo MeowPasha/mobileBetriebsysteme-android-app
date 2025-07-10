@@ -1,5 +1,6 @@
 package com.example.mobilebetriebsysteme_android_app.pages
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,109 +15,143 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.BluetoothViewModel
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModel
 
 @Composable
 fun DualModePage(
-    viewModel: BluetoothViewModel = hiltViewModel(),
+    bluetoothViewModel: BluetoothViewModel = hiltViewModel(),
+    walkingSessionViewModel: WalkingSessionViewModel = hiltViewModel(),
     onClose: () -> Unit
 ) {
-    val state by viewModel.state.collectAsState()
-    val connectionStatus by viewModel.connectionStatus.collectAsState()
-    val isConnecting by viewModel.isConnecting.collectAsState()
+    // Collect Bluetooth state
+    val state by bluetoothViewModel.state.collectAsState()
+    val connectionStatus by bluetoothViewModel.connectionStatus.collectAsState()
+    val isConnecting by bluetoothViewModel.isConnecting.collectAsState()
+
+    // Collect walking session stats
+    val myDistance by walkingSessionViewModel.distanceInMeters.collectAsState()
+    val myDuration by walkingSessionViewModel.sessionDurationInSeconds.collectAsState()
 
     var showInfoDialog by remember { mutableStateOf(true) }
     var dontShowAgain by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val macAddress by bluetoothViewModel.macAddress.collectAsState()
+
+    // Link BluetoothViewModel to WalkingSessionViewModel
+    LaunchedEffect(Unit) {
+        bluetoothViewModel.setWalkingSessionViewModel(walkingSessionViewModel)
+    }
+
+    LaunchedEffect(macAddress) {
+        macAddress?.let {
+            walkingSessionViewModel.setOpponentMAC(bluetoothViewModel.getMacAddress().toString())
+            walkingSessionViewModel.connectedTo(bluetoothViewModel.getMacAddress().toString())
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 8.dp)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Title centered with close button at top right
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Dual Mode", style = MaterialTheme.typography.headlineMedium)
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Scan - Stop - Server
-            Column {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Button(
-                        onClick = { viewModel.startScan() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Start Scan")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(
-                        onClick = { viewModel.stopScan() },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Stop Scan")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-                    Button(onClick = { viewModel.startServer() }) {
-                        Text("Start Server")
-                    }
-
-                    if (state.isScanning) {
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text("Scanning...", style = MaterialTheme.typography.bodySmall)
+                Text(
+                    text = "⚔️ Step Duel",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close",
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
+            // Buttons: Start Scan, Stop Scan, Start Server
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Button(
+                    onClick = { bluetoothViewModel.startScan() },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 6.dp)
+                ) {
+                    Text("Start Scan", style = MaterialTheme.typography.bodySmall)
+                }
+                Button(
+                    onClick = { bluetoothViewModel.stopScan() },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 6.dp)
+                ) {
+                    Text("Stop Scan", style = MaterialTheme.typography.bodySmall)
+                }
+                Button(
+                    onClick = { bluetoothViewModel.startServer() },
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 6.dp)
+                ) {
+                    Text("Start Server", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Show connection status message
             connectionStatus?.let { msg ->
                 Text(
                     text = msg,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = if (msg.startsWith("Connection successful")) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 6.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Devices List
-            Row(modifier = Modifier.fillMaxSize()) {
+            // Lists of devices: found and paired
+            Row(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(end = 8.dp)
+                        .padding(end = 6.dp)
                 ) {
-                    Text("Found Devices", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Found Devices", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(6.dp))
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp)
+                            .height(200.dp)
                     ) {
                         items(state.scannedDevices) { device ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clickable { viewModel.connectToDevice(device) }
+                                    .padding(vertical = 3.dp)
+                                    .clickable { bluetoothViewModel.connectToDevice(device) }
                             ) {
-                                Column(modifier = Modifier.padding(8.dp)) {
-                                    Text(text = device.name ?: "Unnamed")
-                                    device.address?.let {
-                                        Text(text = it, style = MaterialTheme.typography.bodySmall)
-                                    }
+                                Column(modifier = Modifier.padding(6.dp)) {
+                                    Text(text = device.name ?: "Unnamed", style = MaterialTheme.typography.bodyMedium)
+//                                    device.address?.let {
+//                                        Text(text = it, style = MaterialTheme.typography.bodySmall)
+//                                    }
                                 }
                             }
                         }
@@ -126,25 +161,25 @@ fun DualModePage(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .padding(start = 8.dp)
+                        .padding(start = 6.dp)
                 ) {
-                    Text("Paired Devices", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Paired Devices", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(6.dp))
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 300.dp)
+                            .height(200.dp)
                     ) {
                         items(state.pairedDevices) { device ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .clickable { viewModel.connectToDevice(device) }
+                                    .padding(vertical = 3.dp)
+                                    .clickable { bluetoothViewModel.connectToDevice(device) }
                             ) {
-                                Column(modifier = Modifier.padding(8.dp)) {
-                                    Text(text = device.name ?: "Unnamed")
-                                    Text(text = device.address, style = MaterialTheme.typography.bodySmall)
+                                Column(modifier = Modifier.padding(6.dp)) {
+                                    Text(text = device.name ?: "Unnamed", style = MaterialTheme.typography.bodyMedium)
+//                                    Text(text = device.address, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }
@@ -153,7 +188,7 @@ fun DualModePage(
             }
         }
 
-        // Info Dialog (How to use)
+        // Information dialog shown on first launch
         if (showInfoDialog && !dontShowAgain) {
             AlertDialog(
                 onDismissRequest = { showInfoDialog = false },
@@ -162,22 +197,17 @@ fun DualModePage(
                         Text("OK")
                     }
                 },
-                title = { Text("How to Connect in Dual Mode") },
+                title = { Text("How to Connect in Step Duel") },
                 text = {
                     Column {
                         Text(
-                            "To start a Dual Mode session, one device should tap 'Start Server'.\n" +
-                                    "The other device must tap 'Start Scan' and select the wanted device from the list.\n" +
-                                    "Once connected, you can go back and start a DualMode session from the map."
+                            "To start a Step Duel, one device should tap 'Start Server'.\n" +
+                                    "The other device must tap 'Start Scan' and select the device from the list.\n" +
+                                    "Once connected, you can go back and begin your duel from the map."
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = dontShowAgain,
-                                onCheckedChange = { dontShowAgain = it }
-                            )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = dontShowAgain, onCheckedChange = { dontShowAgain = it })
                             Text("Don't show this again")
                         }
                     }
@@ -185,7 +215,7 @@ fun DualModePage(
             )
         }
 
-        // Connecting State
+        // Overlay shown during connection process
         if (isConnecting) {
             Box(
                 modifier = Modifier
@@ -202,3 +232,6 @@ fun DualModePage(
         }
     }
 }
+
+// Extension function to format float to string with fixed decimals
+fun Float.format(digits: Int) = "%.${digits}f".format(this)

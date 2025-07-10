@@ -49,7 +49,7 @@ class AndroidBluetoothController @Inject constructor(
     private var serverSocket: BluetoothServerSocket? = null
     private var clientSocket: BluetoothSocket? = null
 
-    private var socket: BluetoothSocket? = null
+    internal var socket: BluetoothSocket? = null
     var onMessageReceived: ((String) -> Unit)? = null
 
     var onConnectionResult: ((success: Boolean, deviceName: String?) -> Unit)? = null
@@ -84,7 +84,7 @@ class AndroidBluetoothController @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    fun startServer() {
+    override fun startServer() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val adapter = bluetoothAdapter ?: return@launch
@@ -98,7 +98,7 @@ class AndroidBluetoothController @Inject constructor(
                     println("Server connected to: ${acceptedSocket.remoteDevice.name}")
                     onConnectionResult?.invoke(true, acceptedSocket.remoteDevice.name)
 
-                    startListening(acceptedSocket)  // Bağlantı sonrası mesaj dinlemeye başla
+                    startListening(acceptedSocket)
                 }
             } catch (e: IOException) {
                 e.printStackTrace()
@@ -131,7 +131,7 @@ class AndroidBluetoothController @Inject constructor(
         }
     }
 
-    fun sendMessage(message: String) {
+    override fun sendMessage(message: String) {
         try {
             socket?.outputStream?.apply {
                 write(message.toByteArray(Charsets.UTF_8))
@@ -159,11 +159,6 @@ class AndroidBluetoothController @Inject constructor(
                 e.printStackTrace()
             }
         }
-    }
-
-    fun sendChallenge(durationMinutes: Int) {
-        val json = """{"type":"challenge","duration":$durationMinutes}"""
-        sendMessage(json)
     }
 
     override fun closeConnection() {

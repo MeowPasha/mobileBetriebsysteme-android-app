@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Compare
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.*
@@ -23,16 +24,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mobilebetriebsysteme_android_app.data.profile.UserProfile
 import com.example.mobilebetriebsysteme_android_app.data.session.WalkingSessionEntity
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.BluetoothViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.profileVM.ProfileViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModel
 import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModelFactory
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun ProfilePage(
     viewModel: ProfileViewModel,
     walkingSessionViewModel: WalkingSessionViewModel,
+    bluetoothViewModel: BluetoothViewModel,
     onClose: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -189,13 +194,15 @@ fun ProfilePage(
                 items(allSessions) { session ->
                     SessionItem(
                         session = session,
+                        walkingSessionViewModel = walkingSessionViewModel,
+                        bluetoothViewModel = bluetoothViewModel,
                         onDelete = {
                             scope.launch {
                                 walkingSessionViewModel.deleteSession(it)
                                 snackbarHostState.showSnackbar("Session deleted")
                             }
                         },
-                        calculateSteps = walkingSessionViewModel::calculateSteps
+                        calculateSteps = walkingSessionViewModel::calculateSteps,
                     )
                 }
             }
@@ -206,10 +213,13 @@ fun ProfilePage(
 @Composable
 fun SessionItem(
     session: WalkingSessionEntity,
+    walkingSessionViewModel: WalkingSessionViewModel,
+    bluetoothViewModel: BluetoothViewModel,
     onDelete: (WalkingSessionEntity) -> Unit,
-    calculateSteps: (Float) -> Int
+    calculateSteps: (Float) -> Int,
 ) {
     var showConfirmDialog by remember { mutableStateOf(false) }
+    var showConfirmDialogDM by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -225,7 +235,11 @@ fun SessionItem(
                 Text("Duration: ${session.durationSeconds / 60} min ${session.durationSeconds % 60} sec")
                 Text("Distance: %.2f km".format(session.distanceMeters / 1000))
                 Text("Steps: ${calculateSteps(session.distanceMeters)}")
-                Text("Date: ${java.text.SimpleDateFormat("dd.MM.yyyy HH:mm").format(java.util.Date(session.timestamp))}")
+                Text("Date: ${SimpleDateFormat("dd.MM.yyyy HH:mm").format(Date(session.timestamp))}")
+
+                if (session.isDualMode) {
+//                    Text("Already Compared?: ${if (session.isCompared) "Yes" else "No"}")
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -239,6 +253,16 @@ fun SessionItem(
                     Spacer(modifier = Modifier.width(8.dp))
                 }
 
+                if(session.isDualMode && !session.isCompared) {
+//                    IconButton(onClick = { showConfirmDialogDM = true }) {
+//                        Icon(
+//                            imageVector = Icons.Default.Compare,
+//                            contentDescription = "Compare Session",
+//                            tint = MaterialTheme.colorScheme.secondary
+//                        )
+//                    }
+                }
+
                 IconButton(onClick = { showConfirmDialog = true }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -249,6 +273,7 @@ fun SessionItem(
             }
         }
     }
+
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
@@ -262,6 +287,23 @@ fun SessionItem(
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) { Text("No") }
+            }
+        )
+    }
+
+    if (showConfirmDialogDM) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialogDM = false },
+            title = { Text("Confirm Compare") },
+            text = { Text("Do you want to start a comparison with this session?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    walkingSessionViewModel.compareSessions(session, bluetoothViewModel)
+                    showConfirmDialogDM = false
+                }) { Text("Yes") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmDialogDM = false }) { Text("No") }
             }
         )
     }

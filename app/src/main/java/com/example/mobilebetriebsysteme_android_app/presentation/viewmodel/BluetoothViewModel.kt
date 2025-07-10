@@ -1,5 +1,6 @@
 package com.example.mobilebetriebsysteme_android_app.presentation.viewmodel
 
+import android.bluetooth.BluetoothSocket
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,8 @@ import com.example.mobilebetriebsysteme_android_app.bluetooth.AndroidBluetoothCo
 import com.example.mobilebetriebsysteme_android_app.bluetooth.BluetoothController
 import com.example.mobilebetriebsysteme_android_app.bluetooth.BluetoothDevice
 import com.example.mobilebetriebsysteme_android_app.presentation.BluetoothUiState
+import com.example.mobilebetriebsysteme_android_app.data.session.WalkingSessionEntity
+import com.example.mobilebetriebsysteme_android_app.presentation.viewmodel.walkingSessionVM.WalkingSessionViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,7 +24,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class BluetoothViewModel @Inject constructor(
-    private val bluetoothController: BluetoothController
+    internal val bluetoothController: BluetoothController
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(BluetoothUiState())
@@ -60,6 +63,22 @@ class BluetoothViewModel @Inject constructor(
     private val _sessionEndedByRemote = MutableStateFlow(false)
     val sessionEndedByRemote = _sessionEndedByRemote.asStateFlow()
 
+    private val _macAddress = MutableStateFlow<String?>(null)
+    val macAddress: StateFlow<String?> = _macAddress.asStateFlow()
+
+    private val _isCompareRequest = MutableStateFlow(false)
+    val isCompareRequest = _isCompareRequest.asStateFlow()
+
+
+    private var currentMACAddress: String? = null
+
+    // Injected from outside
+    private lateinit var walkingSessionViewModel: WalkingSessionViewModel
+
+    fun setWalkingSessionViewModel(viewModel: WalkingSessionViewModel) {
+        walkingSessionViewModel = viewModel
+    }
+
     init {
         if (bluetoothController is AndroidBluetoothController) {
             bluetoothController.onConnectionResult = { success, deviceName ->
@@ -70,8 +89,16 @@ class BluetoothViewModel @Inject constructor(
                 } else {
                     "Connection failed"
                 }
-            }
 
+                if (success) {
+                    Log.d("BluetoothViewModel", "Connection successful")
+                    val socket = bluetoothController.socket
+                    currentMACAddress = socket?.remoteDevice?.address
+                    _macAddress.value = currentMACAddress
+                    Log.d("BluetoothViewModel", "MAC Address: $currentMACAddress")
+                }
+                setupBluetoothCallbacks(bluetoothController)
+            }
             setupBluetoothCallbacks(bluetoothController)
         }
     }
@@ -129,19 +156,19 @@ class BluetoothViewModel @Inject constructor(
         sendMessage(response.toString())
     }
 
-    fun sendChallenge(duration: Int) {
-        val json = JSONObject().apply {
-            put("type", "challenge")
-            put("duration", duration)
-        }
-        sendMessage(json.toString())
-    }
-
     fun sendSessionEnd() {
         val json = JSONObject().apply {
             put("type", "session_end")
         }
         sendMessage(json.toString())
+    }
+
+    fun sendCompareRequest() {
+        val message = JSONObject().apply {
+            put("type", "compare_request")
+            put("text", "Do you want to compare walking sessions?")
+        }
+        sendMessage(message.toString())
     }
 
     fun resetChallengeAcceptedFlag() {
@@ -150,6 +177,11 @@ class BluetoothViewModel @Inject constructor(
 
     fun resetSessionEndedFlag() {
         _sessionEndedByRemote.value = false
+    }
+
+    fun getMacAddress(): String? {
+        Log.d("BluetoothViewModel, returning MAC Address", "MAC Address: $currentMACAddress")
+        return currentMACAddress
     }
 
     fun setupBluetoothCallbacks(bluetoothController: AndroidBluetoothController) {
@@ -174,12 +206,10 @@ class BluetoothViewModel @Inject constructor(
                             _challengeDuration.value = duration
                             _challengeFromUser.value = fromUser
                             _showChallengeDialog.value = true
+                            _isCompareRequest.value = false
                             Log.d("BluetoothViewModel", "Challenge received, show dialog: true, duration=$duration")
                         }
-                        "DUAL_SESSION_REQUEST" -> {
-                            Log.d("BluetoothViewModel", "Dual session request received")
-                            // Burada istersen ekstra işlemler yapabilirsin
-                        }
+
                         "challenge_response" -> {
                             val accepted = json.getBoolean("accepted")
                             val duration = json.optInt("duration", 0)
@@ -194,6 +224,13 @@ class BluetoothViewModel @Inject constructor(
                         "session_end" -> {
                             Log.d("BluetoothViewModel", "Session end received from remote")
                             _sessionEndedByRemote.value = true
+                        }
+                        "compare_request" -> {
+                            val text = json.optString("text", "Do you want to compare walking sessions?")
+                            _connectionStatus.value = text
+                            _isCompareRequest.value = true
+                            _showChallengeDialog.value = true
+                            Log.d("BluetoothViewModel", "Comparison request received: $text")
                         }
                         else -> {
                             Log.d("BluetoothViewModel", "Unknown message type: ${json.getString("type")}")

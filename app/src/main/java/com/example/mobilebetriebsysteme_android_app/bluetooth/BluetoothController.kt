@@ -3,53 +3,75 @@ package com.example.mobilebetriebsysteme_android_app.bluetooth
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Defines the contract for Bluetooth operations within the app.
+ * Interface that defines the core Bluetooth functionalities required by the app.
+ * This abstraction supports both client and server Bluetooth roles and allows reactive state updates.
  */
 interface BluetoothController {
 
     /**
-     * A cold stream of devices discovered during an active scan.
-     * Emits the current list of found BluetoothDevice objects.
+     * A StateFlow emitting a list of Bluetooth devices discovered during scanning.
+     * This list updates in real-time as devices are found.
+     * Useful for displaying available devices to connect to.
      */
     val scannedDevices: StateFlow<List<BluetoothDevice>>
 
     /**
-     * A cold stream of devices that are currently paired (bonded) with the local adapter.
-     * Emits the current list of paired BluetoothDevice objects.
+     * A StateFlow emitting a list of Bluetooth devices that are already paired (bonded) with the device.
+     * These are typically persistent and do not require new scanning.
      */
     val pairedDevices: StateFlow<List<BluetoothDevice>>
 
     /**
-     * Starts a BLE/classic Bluetooth discovery scan.
-     * Discovered devices will be emitted through [scannedDevices].
+     * Starts a discovery process to find nearby Bluetooth devices.
+     * Discovered devices are pushed into [scannedDevices].
+     * Should be stopped using [stopDiscovery] to conserve resources.
      */
     fun startDiscovery()
 
     /**
-     * Stops any ongoing Bluetooth discovery scan.
-     * Subsequent calls to `scannedDevices` will not include new devices until a new scan is started.
+     * Stops the ongoing Bluetooth discovery process.
+     * After calling this, [scannedDevices] will no longer be updated with new devices.
      */
     fun stopDiscovery()
 
     /**
-     * Attempts to establish a Bluetooth connection to the given [device].
-     * This operation may involve socket creation, RFCOMM handshake, etc.
+     * Initiates a connection to the specified Bluetooth device in client mode.
      *
-     * @param device The target BluetoothDevice to connect to.
+     * @param device The target device to connect to. Must be a valid, discoverable or paired device.
+     * Once connected, messages can be sent via [sendMessage].
      */
     fun connectToServer(device: BluetoothDevice)
 
     /**
-     * Releases any resources held by the controller, such as broadcast receivers.
-     * Should be called when the controller is no longer needed to avoid leaks.
+     * Releases all internally held system resources, such as BroadcastReceivers or listeners.
+     * This should be called when the controller is no longer used, typically in onDestroy.
      */
     fun release()
 
     /**
-     * Closes an active Bluetooth connection, if one exists.
-     * Ensures sockets are closed and internal state reset.
+     * Closes an active Bluetooth connection, if any.
+     * Ensures sockets are closed and internal references are cleared to avoid memory leaks.
      */
     fun closeConnection()
 
+    /**
+     * Starts a Bluetooth server that listens for incoming connection requests.
+     * Typically used when the app is acting as the host in a Dual Mode session.
+     */
+    fun startServer()
+
+    /**
+     * Sends a text-based message over the currently active Bluetooth connection.
+     * The message format is typically JSON to enable structured communication.
+     *
+     * @param message The string message to be transmitted.
+     */
+    fun sendMessage(message: String)
+
+    /**
+     * Returns whether a Bluetooth connection is currently established.
+     *
+     * @return true if connected, false otherwise.
+     */
     fun isConnected(): Boolean
 }
