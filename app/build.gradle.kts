@@ -1,12 +1,16 @@
+import org.gradle.kotlin.dsl.testImplementation
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-kapt")
 }
 
 android {
     namespace = "com.example.mobilebetriebsysteme_android_app"
     compileSdk = 35
+    apply(plugin = "dagger.hilt.android.plugin")
 
     defaultConfig {
         applicationId = "com.example.mobilebetriebsysteme_android_app"
@@ -56,5 +60,47 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    implementation("androidx.navigation:navigation-compose:2.8.9")
+    implementation(libs.androidx.navigation.compose)
+
+    implementation(libs.osmdroid.android)
+    implementation(libs.play.services.location)
+
+    // https://mvnrepository.com/artifact/androidx.lifecycle/lifecycle-runtime-compose
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
+
+    implementation("androidx.room:room-runtime:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+
+    // Hilt dependency
+    implementation("com.google.dagger:hilt-android:2.55")
+    kapt("com.google.dagger:hilt-android-compiler:2.55")
+
+    // Hilt navigation
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    kapt("androidx.hilt:hilt-compiler:1.2.0")
+
+    // OSMdroid core
+    implementation("org.osmdroid:osmdroid-android:6.1.16")
+
+    // OSM Bonus Pack (contains OSRMRoadManager)
+    implementation("com.github.MKergall:osmbonuspack:6.9.0")
+    // Needed for HTTP requests in OSM Bonus Pack
+    implementation("org.apache.httpcomponents:httpclient-android:4.3.5.1")
+    implementation("com.squareup.okhttp3:okhttp:4.9.0")
+
+    //Icons
+    implementation("androidx.compose.material:material-icons-extended:1.6.1")
+
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.4.3")
+    implementation("com.google.android.gms:play-services-base:18.2.0") // google play services
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4")
+
+    // compose nav
+    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
+
+    //TESTS
+    testImplementation ("androidx.arch.core:core-testing:2.2.0")
+
 }
