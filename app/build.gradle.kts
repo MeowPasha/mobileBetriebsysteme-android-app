@@ -1,3 +1,5 @@
+import org.gradle.kotlin.dsl.testImplementation
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -97,4 +99,8 @@ dependencies {
     // compose nav
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
+
+    //TESTS
+    testImplementation ("androidx.arch.core:core-testing:2.2.0")
+
 }
